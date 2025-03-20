@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "678213677",
+    "project_id": "point-of-sale-c6701",
+    "storage_bucket": "point-of-sale-c6701.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:678213677:android:aca02ba68ab22a666c20a4",
+        "android_client_info": {
+          "package_name": "com.arkehil.pos"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB2Ybc60Lc1pRsGdlT43shT4QtMuCurLf0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:678213677:android:ef134cbacf25ec3c6c20a4",
+        "android_client_info": {
+          "package_name": "com.example.pos"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB2Ybc60Lc1pRsGdlT43shT4QtMuCurLf0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
