@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:path_provider/path_provider.dart';
-// ignore: depend_on_referenced_packages
 import 'package:path/path.dart' as path;
 
 class EditProductScreen extends StatefulWidget {
@@ -93,29 +92,35 @@ class _EditProductScreenState extends State<EditProductScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Edit Produk")),
-      body: Padding(
+      appBar: AppBar(
+        title: const Text("Edit Produk"),
+        centerTitle: true,
+        backgroundColor: Colors.deepPurple,
+      ),
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            GestureDetector(
-              onTap: _pickImage,
-              child: Container(
-                width: 100,
-                height: 100,
-                decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
-                child: _image != null
-                    ? Image.file(_image!, fit: BoxFit.cover)
-                    : (_existingImagePath != null && _existingImagePath!.isNotEmpty
-                        ? Image.file(File(_existingImagePath!), fit: BoxFit.cover)
-                        : const Icon(Icons.add_a_photo, size: 50)),
+            Center(
+              child: GestureDetector(
+                onTap: _pickImage,
+                child: CircleAvatar(
+                  radius: 60,
+                  backgroundColor: Colors.grey[300],
+                  backgroundImage: _image != null ? FileImage(_image!) : (_existingImagePath != null && _existingImagePath!.isNotEmpty
+                      ? FileImage(File(_existingImagePath!))
+                      : null),
+                  child: _image == null && _existingImagePath == null ? const Icon(Icons.camera_alt, size: 40) : null,
+                ),
               ),
             ),
-            TextField(controller: _nameController, decoration: const InputDecoration(labelText: "Nama Produk")),
-            TextField(controller: _priceController, decoration: const InputDecoration(labelText: "Harga"), keyboardType: TextInputType.number),
-            TextField(controller: _stockController, decoration: const InputDecoration(labelText: "Stok"), keyboardType: TextInputType.number),
-            TextField(controller: _descController, decoration: const InputDecoration(labelText: "Deskripsi")),
-            TextField(controller: _categoryController, decoration: const InputDecoration(labelText: "Kategori")),
+            const SizedBox(height: 20),
+            _buildTextField(_nameController, "Nama Produk"),
+            _buildTextField(_priceController, "Harga", TextInputType.number),
+            _buildTextField(_stockController, "Stok", TextInputType.number),
+            _buildTextField(_descController, "Deskripsi"),
+            _buildTextField(_categoryController, "Kategori"),
             SwitchListTile(
               title: const Text("Status Produk (Aktif/Tidak Aktif)"),
               value: _isActive,
@@ -126,14 +131,42 @@ class _EditProductScreenState extends State<EditProductScreen> {
               },
             ),
             const SizedBox(height: 20),
-            ElevatedButton(onPressed: _updateProduct, child: const Text("Simpan Perubahan")),
-            const SizedBox(height: 10),
-            TextButton(
-              onPressed: _deleteProduct,
-              style: TextButton.styleFrom(foregroundColor: Colors.red),
-              child: const Text("Hapus Produk"),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                ElevatedButton(
+                  onPressed: _updateProduct,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
+                  ),
+                  child: const Text("Simpan", style: TextStyle(fontSize: 16, color: Colors.white)),
+                ),
+                ElevatedButton(
+                  onPressed: _deleteProduct,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
+                  ),
+                  child: const Text("Hapus", style: TextStyle(fontSize: 16, color: Colors.white)),
+                ),
+              ],
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTextField(TextEditingController controller, String label, [TextInputType keyboardType = TextInputType.text]) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: TextField(
+        controller: controller,
+        keyboardType: keyboardType,
+        decoration: InputDecoration(
+          labelText: label,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         ),
       ),
     );

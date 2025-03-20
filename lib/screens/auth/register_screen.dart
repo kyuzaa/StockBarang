@@ -12,11 +12,9 @@ class RegisterScreen extends StatefulWidget {
 class _RegisterScreenState extends State<RegisterScreen> {
   int _currentStep = 0;
 
-  // Form Keys untuk setiap step
   final _personalFormKey = GlobalKey<FormState>();
   final _accountFormKey = GlobalKey<FormState>();
 
-  // Controllers untuk input
   final TextEditingController nameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController phoneController = TextEditingController();
@@ -27,12 +25,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
   void register() async {
     if (_accountFormKey.currentState!.validate()) {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      bool success = await authProvider.register(emailController.text, passwordController.text, usernameController.text, phoneController.text, addressController.text);
+      bool success = await authProvider.register(
+        emailController.text,
+        passwordController.text,
+        usernameController.text,
+        phoneController.text,
+        addressController.text,
+      );
       if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Registrasi berhasil! Silakan login")));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Registrasi berhasil! Silakan login")),
+        );
         Navigator.pop(context);
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Registrasi gagal! Email / Username telah digunakan")));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Registrasi gagal! Email / Username telah digunakan")),
+        );
       }
     }
   }
@@ -40,54 +48,72 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Register")),
-      body: Stepper(
-        type: StepperType.vertical,
-        currentStep: _currentStep,
-        onStepContinue: () {
-          if (_currentStep == 0) {
-            if (_personalFormKey.currentState!.validate()) {
-              setState(() => _currentStep++);
-            }
-          } else {
-            register();
-          }
-        },
-        onStepCancel: () {
-          if (_currentStep == 0) {
-            Navigator.pop(context); // Kembali ke halaman login
-          } else {
-            setState(() => _currentStep--);
-          }
-        },
-        steps: [
-          Step(
-            title: const Text("Informasi Personal"),
-            content: Form(
-              key: _personalFormKey,
-              child: Column(
-                children: [
-                  _buildTextField(nameController, "Nama", Icons.person),
-                  _buildTextField(emailController, "Email", Icons.email, isEmail: true),
-                  _buildTextField(phoneController, "No HP", Icons.phone),
-                  _buildTextField(addressController, "Alamat", Icons.home),
-                ],
-              ),
-            ),
+      appBar: AppBar(
+        title: const Text("Register"),
+        backgroundColor: Colors.blue.shade700,
+        elevation: 5,
+      ),
+      body: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Colors.blue.shade100, Colors.blue.shade50],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
-          Step(
-            title: const Text("Akun"),
-            content: Form(
-              key: _accountFormKey,
-              child: Column(
-                children: [
-                  _buildTextField(usernameController, "Username", Icons.account_circle),
-                  _buildPasswordField(passwordController, "Password"),
-                ],
+        ),
+        child: Card(
+          elevation: 5,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: Stepper(
+            type: StepperType.vertical,
+            currentStep: _currentStep,
+            onStepContinue: () {
+              if (_currentStep == 0) {
+                if (_personalFormKey.currentState!.validate()) {
+                  setState(() => _currentStep++);
+                }
+              } else {
+                register();
+              }
+            },
+            onStepCancel: () {
+              if (_currentStep == 0) {
+                Navigator.pop(context);
+              } else {
+                setState(() => _currentStep--);
+              }
+            },
+            steps: [
+              Step(
+                title: const Text("Informasi Personal"),
+                content: Form(
+                  key: _personalFormKey,
+                  child: Column(
+                    children: [
+                      _buildTextField(nameController, "Nama", Icons.person),
+                      _buildTextField(emailController, "Email", Icons.email, isEmail: true),
+                      _buildTextField(phoneController, "No HP", Icons.phone),
+                      _buildTextField(addressController, "Alamat", Icons.home),
+                    ],
+                  ),
+                ),
               ),
-            ),
+              Step(
+                title: const Text("Akun"),
+                content: Form(
+                  key: _accountFormKey,
+                  child: Column(
+                    children: [
+                      _buildTextField(usernameController, "Username", Icons.account_circle),
+                      _buildPasswordField(passwordController, "Password"),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -99,8 +125,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
         controller: controller,
         decoration: InputDecoration(
           labelText: hint,
-          prefixIcon: Icon(icon),
+          prefixIcon: Icon(icon, color: Colors.blue.shade700),
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+          filled: true,
+          fillColor: Colors.white,
         ),
         keyboardType: isEmail ? TextInputType.emailAddress : TextInputType.text,
         validator: (value) {
@@ -122,8 +150,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
         obscureText: true,
         decoration: InputDecoration(
           labelText: hint,
-          prefixIcon: const Icon(Icons.lock),
+          prefixIcon: Icon(Icons.lock, color: Colors.blue.shade700),
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+          filled: true,
+          fillColor: Colors.white,
         ),
         validator: (value) => value == null || value.isEmpty ? "Password tidak boleh kosong" : null,
       ),

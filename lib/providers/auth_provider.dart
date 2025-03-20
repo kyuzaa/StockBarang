@@ -28,10 +28,10 @@ class AuthProvider with ChangeNotifier {
   String get userPhoto => _photoPath ?? 'assets/default_avatar.png';
 
   AuthProvider() {
-    _checkLoginStatus();
+    checkLoginStatus();
   }
 
-  Future<void> _checkLoginStatus() async {
+  Future<void> checkLoginStatus() async {
     _user = _auth.currentUser;
     if (_user != null) {
       await _fetchUserData();

@@ -16,39 +16,43 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    _navigateToNextScreen();
-  }
+    Future.microtask(() => Provider.of<AuthProvider>(context, listen: false).checkLoginStatus());
 
-  Future<void> _navigateToNextScreen() async {
-    await Future.delayed(const Duration(seconds: 2)); // Simulasi loading
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-
-    if (authProvider.user != null) {
-      if (authProvider.role == 'Owner') {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const OwnerDashboardScreen()),
-        );
-      } else {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const CustomerDashboardScreen()),
-        );
-      }
-    } else {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const LoginScreen()),
-      );
-    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(
-        child: CircularProgressIndicator(), // Loading indikator
-      ),
+    return Consumer<AuthProvider>(
+      builder: (context, authProvider, child) {
+        if (authProvider.user == null) {
+          Future.delayed(Duration.zero, () {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const LoginScreen()),
+            );
+          });
+        } else if (authProvider.role != null) {
+          Future.delayed(Duration.zero, () {
+            if (authProvider.role == 'Owner') {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => const OwnerDashboardScreen()),
+              );
+            } else {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => const CustomerDashboardScreen()),
+              );
+            }
+          });
+        }
+
+        return const Scaffold(
+          body: Center(
+            child: CircularProgressIndicator(), // Loading indikator
+          ),
+        );
+      },
     );
   }
 }
