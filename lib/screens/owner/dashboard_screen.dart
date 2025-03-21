@@ -10,10 +10,10 @@ class OwnerDashboardScreen extends StatefulWidget {
   const OwnerDashboardScreen({super.key});
 
   @override
-  State<OwnerDashboardScreen> createState() => _OwnerDashboardScreenState();
+  State<OwnerDashboardScreen> createState() => OwnerDashboardScreenState();
 }
 
-class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
+class OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
   int _selectedIndex = 0;
   bool _isSidebarVisible = true; // State untuk menampilkan/menyembunyikan sidebar
 
@@ -23,7 +23,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
     const AddProductScreen(),
   ];
 
-  void _onItemTapped(int index) {
+  void onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
     });
@@ -88,7 +88,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
           if (_isSidebarVisible)
             NavigationRail(
               selectedIndex: _selectedIndex,
-              onDestinationSelected: _onItemTapped,
+              onDestinationSelected: onItemTapped,
               labelType: NavigationRailLabelType.all,
               destinations: const [
                 NavigationRailDestination(

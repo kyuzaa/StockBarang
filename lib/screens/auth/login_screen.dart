@@ -83,7 +83,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       "Waroeng Amazon",
                       style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF1E3C72),
+                            color: const Color(0xFF1E3C72),
                           ),
                     ),
                     const SizedBox(height: 10),
@@ -133,7 +133,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           const SizedBox(height: 20),
                           ElevatedButton(
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Color(0xFF2A5298),
+                              backgroundColor: const Color(0xFF2A5298),
                               padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(10),

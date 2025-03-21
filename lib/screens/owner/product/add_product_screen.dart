@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'dart:typed_data';
+import 'package:intl/intl.dart';
 import 'package:flutter/services.dart';
-import 'package:pos/screens/customer/home_screen.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class AddProductScreen extends StatefulWidget {
   const AddProductScreen({super.key});
@@ -26,13 +27,52 @@ class _AddProductScreenState extends State<AddProductScreen> {
     'Alat Kebersihan', 'Alat Tulis', 'Obat'
   ];
 
+  final NumberFormat currencyFormat = NumberFormat("#,###", "id_ID");
+
   Future<void> _pickImage() async {
     final pickedFile = await ImagePicker().pickImage(source: ImageSource.gallery);
+    print(pickedFile);
     if (pickedFile != null) {
       final bytes = await pickedFile.readAsBytes();
       setState(() => _imageBytes = bytes);
     }
   }
+
+  void _formatPrice(String value) {
+    String newValue = value.replaceAll(RegExp(r'[^\d]'), ''); // Hanya angka
+    if (newValue.isNotEmpty) {
+      double parsed = double.parse(newValue);
+      _priceController.value = TextEditingValue(
+        text: currencyFormat.format(parsed), // Format sebagai Rupiah
+        selection: TextSelection.collapsed(offset: currencyFormat.format(parsed).length),
+      );
+    }
+  }
+
+  Future<String?> _uploadToImgBB(Uint8List imageBytes) async {
+    if (_selectedCategory == null || _nameController.text.isEmpty) {
+      return null;
+    }
+
+    String formattedCategory = _selectedCategory!.replaceAll(RegExp(r'[^\w\s]'), '').replaceAll(' ', '-');
+    String formattedName = _nameController.text.replaceAll(RegExp(r'[^\w\s]'), '').replaceAll(' ', '-');
+    String fileName = "$formattedCategory-$formattedName.jpg";
+
+    String apiKey = "ad3ec51569161f45a269c56875f60d58"; // Ganti dengan API Key ImgBB
+    Uri uri = Uri.parse("https://api.imgbb.com/1/upload?key=$apiKey");
+
+    var request = http.MultipartRequest('POST', uri);
+    request.files.add(http.MultipartFile.fromBytes('image', imageBytes, filename: fileName));
+
+    var response = await request.send();
+    if (response.statusCode == 200) {
+      var jsonResponse = json.decode(await response.stream.bytesToString());
+      return jsonResponse['data']['url']; // Dapatkan URL gambar
+    } else {
+      return null; // Jika gagal upload
+    }
+  }
+
 
   Future<void> _addProduct() async {
     if (_nameController.text.isEmpty ||
@@ -42,21 +82,37 @@ class _AddProductScreenState extends State<AddProductScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Harap isi semua field"), backgroundColor: Colors.red),
       );
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Mengunggah gambar..."), backgroundColor: Colors.blue),
+      );
+    }
+
+    int priceValue = int.parse(_priceController.text.replaceAll('.', '')); // Menghapus format Rupiah
+    String? imageUrl = await _uploadToImgBB(_imageBytes!);
+    if (imageUrl == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Gagal mengunggah gambar"), backgroundColor: Colors.red),
+      );
       return;
     }
 
     await FirebaseFirestore.instance.collection("products").add({
       "name": _nameController.text,
-      "price": int.parse(_priceController.text),
+      "price": priceValue,
       "stock": int.parse(_stockController.text),
       "description": _descController.text,
       "category": _selectedCategory,
       "status": _isActive,
-      "imageUrl": _imageBytes != null ? "uploaded_image_url" : null,
+      "imageUrl": imageUrl,
       "createdAt": Timestamp.now(),
     });
 
-    Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => HomeScreen()));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Produk berhasil ditambahkan!"), backgroundColor: Colors.green),
+    );
+
+    Navigator.pop(context);
+    // Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const OwnerDashboardScreen()));
   }
 
   @override
@@ -95,7 +151,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
   Widget _buildImagePicker() {
     return GestureDetector(
-      onTap: () {},
+      onTap: _pickImage,
       child: Container(
         width: double.infinity,
         height: 200,
@@ -107,7 +163,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
           ),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: Colors.blueAccent, width: 2),
-          boxShadow: [
+          boxShadow: const [
             BoxShadow(
               color: Colors.black12,
               blurRadius: 8,
@@ -116,9 +172,12 @@ class _AddProductScreenState extends State<AddProductScreen> {
             ),
           ],
         ),
-        child: const Center(
-          child: Icon(Icons.camera_alt, size: 60, color: Colors.deepPurple),
-        ),
+        child: _imageBytes == null
+            ? const Center(child: Icon(Icons.camera_alt, size: 60, color: Colors.deepPurple))
+            : ClipRRect(
+                borderRadius: BorderRadius.circular(18),
+                child: Image.memory(_imageBytes!, fit: BoxFit.cover, width: double.infinity, height: 200),
+              ),
       ),
     );
   }
@@ -133,7 +192,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
         child: Column(
           children: [
             _buildTextField("Nama Produk", _nameController),
-            _buildTextField("Harga", _priceController, isNumber: true),
+            _buildTextField("Harga", _priceController, isNumber: true, onChanged: _formatPrice),
             _buildTextField("Stok", _stockController, isNumber: true),
             _buildTextField("Deskripsi", _descController, maxLines: 3),
             _buildDropdown(),
@@ -144,21 +203,23 @@ class _AddProductScreenState extends State<AddProductScreen> {
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController controller, {bool isNumber = false, int maxLines = 1}) {
+  Widget _buildTextField(String label, TextEditingController controller,
+      {bool isNumber = false, int maxLines = 1, Function(String)? onChanged}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: TextField(
         controller: controller,
         keyboardType: isNumber ? TextInputType.number : TextInputType.text,
         maxLines: maxLines,
+        onChanged: onChanged,
         decoration: InputDecoration(
           labelText: label,
-          labelStyle: TextStyle(color: Colors.deepPurple, fontWeight: FontWeight.bold),
+          labelStyle: const TextStyle(color: Colors.deepPurple, fontWeight: FontWeight.bold),
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
           contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(15),
-            borderSide: BorderSide(color: Colors.blueAccent, width: 2),
+            borderSide: const BorderSide(color: Colors.blueAccent, width: 2),
           ),
         ),
       ),
@@ -199,7 +260,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
   Widget _buildSubmitButton() {
     return ElevatedButton.icon(
-      onPressed: () {},
+      onPressed: _addProduct,
       style: ElevatedButton.styleFrom(
         backgroundColor: Colors.blueAccent,
         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
