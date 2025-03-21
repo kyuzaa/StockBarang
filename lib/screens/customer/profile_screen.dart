@@ -51,12 +51,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final authProvider = Provider.of<AuthProvider>(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Profil Saya")),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
+      backgroundColor: Colors.grey[100],
+      appBar: AppBar(
+        title: const Text(
+          "Profile",
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        centerTitle: true,
+        backgroundColor: Colors.blue.shade700,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.black),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
+            const SizedBox(height: 20),
             Center(
               child: GestureDetector(
                 onTap: () async {
@@ -65,59 +80,91 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: Stack(
                   alignment: Alignment.bottomRight,
                   children: [
-                    CircleAvatar(
-                      radius: 50,
-                      backgroundImage: authProvider.userPhoto.startsWith('/')
-                          ? FileImage(File(authProvider.userPhoto)) as ImageProvider
-                          : AssetImage(authProvider.userPhoto),
+                    Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.blue.withOpacity(0.4),
+                            blurRadius: 20,
+                            spreadRadius: 5,
+                          ),
+                        ],
+                      ),
+                      child: CircleAvatar(
+                        radius: 60,
+                        backgroundImage: authProvider.userPhoto.startsWith('/')
+                            ? FileImage(File(authProvider.userPhoto)) as ImageProvider
+                            : AssetImage(authProvider.userPhoto),
+                      ),
                     ),
-                    const CircleAvatar(
-                      radius: 15,
-                      backgroundColor: Colors.blue,
-                      child: Icon(Icons.camera_alt, size: 15, color: Colors.white),
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: const BoxDecoration(
+                        color: Colors.blue,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.camera_alt, size: 18, color: Colors.white),
                     ),
                   ],
                 ),
               ),
             ),
             const SizedBox(height: 20),
-            Form(
-              key: _formKey,
-              child: Column(
-                children: [
-                  TextFormField(
-                    controller: _nameController,
-                    decoration: const InputDecoration(labelText: "Nama"),
-                    validator: (value) => value!.isEmpty ? "Nama tidak boleh kosong" : null,
+            Card(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+              elevation: 5,
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    children: [
+                      TextFormField(
+                        controller: _nameController,
+                        decoration: const InputDecoration(labelText: "Nama"),
+                        validator: (value) => value!.isEmpty ? "Nama tidak boleh kosong" : null,
+                      ),
+                      const SizedBox(height: 10),
+                      TextFormField(
+                        controller: _phoneController,
+                        decoration: const InputDecoration(labelText: "No HP"),
+                        validator: (value) => value!.isEmpty ? "No HP tidak boleh kosong" : null,
+                      ),
+                      const SizedBox(height: 10),
+                      TextFormField(
+                        controller: _addressController,
+                        decoration: const InputDecoration(labelText: "Alamat"),
+                        validator: (value) => value!.isEmpty ? "Alamat tidak boleh kosong" : null,
+                      ),
+                      const SizedBox(height: 20),
+                      ElevatedButton(
+                        onPressed: () => _updateProfile(context),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blueAccent,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 50),
+                        ),
+                        child: const Text("Simpan Perubahan", style: TextStyle(color: Colors.white, fontSize: 16)),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 10),
-                  TextFormField(
-                    controller: _phoneController,
-                    decoration: const InputDecoration(labelText: "No HP"),
-                    validator: (value) => value!.isEmpty ? "No HP tidak boleh kosong" : null,
-                  ),
-                  const SizedBox(height: 10),
-                  TextFormField(
-                    controller: _addressController,
-                    decoration: const InputDecoration(labelText: "Alamat"),
-                    validator: (value) => value!.isEmpty ? "Alamat tidak boleh kosong" : null,
-                  ),
-                  const SizedBox(height: 20),
-                  ElevatedButton(
-                    onPressed: () => _updateProfile(context),
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
-                    child: const Text("Simpan Perubahan", style: TextStyle(color: Colors.white)),
-                  ),
-                ],
+                ),
               ),
             ),
             const SizedBox(height: 20),
-            Center(
-              child: ElevatedButton(
-                onPressed: () => _logout(context),
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                child: const Text("Logout", style: TextStyle(color: Colors.white)),
+            ElevatedButton(
+              onPressed: () => _logout(context),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 50),
               ),
+              child: const Text("Logout", style: TextStyle(color: Colors.white, fontSize: 16)),
             ),
           ],
         ),

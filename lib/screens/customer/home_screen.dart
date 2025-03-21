@@ -6,7 +6,6 @@ import 'package:pos/widgets/category_button.dart';
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
-  // Fungsi untuk menangani saat produk ditambahkan ke keranjang
   void _handleAddToCart(BuildContext context, Map<String, dynamic> product) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('${product["name"]} ditambahkan ke keranjang!')),
@@ -17,15 +16,17 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: TextField(
-          decoration: InputDecoration(
-            hintText: "Cari produk...",
-            prefixIcon: const Icon(Icons.search),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
-            filled: true,
-            fillColor: Colors.grey[200],
+        backgroundColor: Colors.blue.shade700,
+        title: const Text(
+          "Waroeng Barokan",
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
           ),
         ),
+        centerTitle: true,
+        elevation: 0,
       ),
       body: SingleChildScrollView(
         child: Column(
@@ -35,15 +36,44 @@ class HomeScreen extends StatelessWidget {
             Container(
               margin: const EdgeInsets.all(16),
               width: double.infinity,
-              height: 150,
+              height: 180,
               decoration: BoxDecoration(
-                image: const DecorationImage(
-                  image: AssetImage('assets/banner.jpg'),
+                borderRadius: BorderRadius.circular(10),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black26,
+                    blurRadius: 5,
+                    offset: Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Image.asset(
+                  'assets/banner_waroeng.jpg',
                   fit: BoxFit.cover,
                 ),
-                borderRadius: BorderRadius.circular(10),
               ),
             ),
+
+            // Search Bar
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: TextField(
+                decoration: InputDecoration(
+                  hintText: "Cari produk...",
+                  prefixIcon: const Icon(Icons.search, color: Colors.blue),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide.none,
+                  ),
+                  filled: true,
+                  fillColor: Colors.grey[200],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 20),
 
             // Kategori Produk
             const Padding(
@@ -66,36 +96,18 @@ class HomeScreen extends StatelessWidget {
               ),
             ),
 
-            const SizedBox(height: 10),
-
-            // Image Slider
-            SizedBox(
-              height: 150,
-              child: PageView(
-                children: [
-                  Image.asset('assets/slider1.jpg', fit: BoxFit.cover),
-                  Image.asset('assets/slider2.jpg', fit: BoxFit.cover),
-                  Image.asset('assets/slider3.jpg', fit: BoxFit.cover),
-                ],
-              ),
-            ),
+            const SizedBox(height: 20),
 
             // Produk Terbaru
             const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              padding: EdgeInsets.symmetric(horizontal: 16),
               child: Text("Produk Terbaru", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             ),
             StreamBuilder(
-              stream: FirebaseFirestore.instance
-                  .collection("products")
-                  .orderBy("createdAt", descending: true)
-                  .limit(4)
-                  .snapshots(),
+              stream: FirebaseFirestore.instance.collection("products").orderBy("createdAt", descending: true).limit(4).snapshots(),
               builder: (context, snapshot) {
                 if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-
                 var products = snapshot.data!.docs;
-
                 return GridView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   shrinkWrap: true,
@@ -118,18 +130,18 @@ class HomeScreen extends StatelessWidget {
               },
             ),
 
+            const SizedBox(height: 20),
+
             // Semua Produk
             const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              padding: EdgeInsets.symmetric(horizontal: 16),
               child: Text("Semua Produk", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             ),
             StreamBuilder(
               stream: FirebaseFirestore.instance.collection("products").snapshots(),
               builder: (context, snapshot) {
                 if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-
                 var allProducts = snapshot.data!.docs;
-
                 return GridView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   shrinkWrap: true,
