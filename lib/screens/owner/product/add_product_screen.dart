@@ -6,6 +6,8 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
+import 'package:pos/screens/owner/dashboard_screen.dart';
+
 class AddProductScreen extends StatefulWidget {
   const AddProductScreen({super.key});
 
@@ -49,21 +51,52 @@ class _AddProductScreenState extends State<AddProductScreen> {
     }
   }
 
-  Future<String?> _uploadToImgBB(Uint8List imageBytes) async {
-    String apiKey = "ad3ec51569161f45a269c56875f60d58"; // Ganti dengan API Key ImgBB
-    Uri uri = Uri.parse("https://api.imgbb.com/1/upload?key=$apiKey");
-
-    var request = http.MultipartRequest('POST', uri);
-    request.files.add(http.MultipartFile.fromBytes('image', imageBytes, filename: 'product.jpg'));
+  Future<String?> _uploadToFlask(Uint8List imageBytes) async {
+    var request = http.MultipartRequest(
+      'POST',
+      Uri.parse("http://174.138.31.117:5000/upload"), // atau "https://your-domain.com/upload"
+    );
+    
+    String formattedCategory = _selectedCategory!.replaceAll(RegExp(r'[^\w\s]'), '').replaceAll(' ', '-');
+    String formattedName = _nameController.text.replaceAll(RegExp(r'[^\w\s]'), '').replaceAll(' ', '-');
+    String fileName = "$formattedCategory-$formattedName.jpg";
+    request.files.add(http.MultipartFile.fromBytes('image', imageBytes, filename: fileName));
 
     var response = await request.send();
     if (response.statusCode == 200) {
       var jsonResponse = json.decode(await response.stream.bytesToString());
+      return jsonResponse['image_url'];
+    } else {
+      return null;
+    }
+  }
+
+  Future<String?> _uploadToImgBB(Uint8List imageBytes) async {
+    if (_selectedCategory == null || _nameController.text.isEmpty) {
+      return null;
+    }
+
+    String formattedCategory = _selectedCategory!.replaceAll(RegExp(r'[^\w\s]'), '').replaceAll(' ', '-');
+    String formattedName = _nameController.text.replaceAll(RegExp(r'[^\w\s]'), '').replaceAll(' ', '-');
+    String fileName = "$formattedCategory-$formattedName.jpg";
+    print(fileName);
+
+    String apiKey = "ad3ec51569161f45a269c56875f60d58"; // Ganti dengan API Key ImgBB
+    Uri uri = Uri.parse("https://api.imgbb.com/1/upload?key=$apiKey");
+
+    var request = http.MultipartRequest('POST', uri);
+    request.files.add(http.MultipartFile.fromBytes('image', imageBytes, filename: fileName));
+
+    var response = await request.send();
+    if (response.statusCode == 200) {
+      var jsonResponse = json.decode(await response.stream.bytesToString());
+      print(jsonResponse);
       return jsonResponse['data']['url']; // Dapatkan URL gambar
     } else {
       return null; // Jika gagal upload
     }
   }
+
 
   Future<void> _addProduct() async {
     if (_nameController.text.isEmpty ||
@@ -73,13 +106,15 @@ class _AddProductScreenState extends State<AddProductScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Harap isi semua field"), backgroundColor: Colors.red),
       );
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Mengunggah gambar..."), backgroundColor: Colors.blue),
-      );
+      return;
     }
 
-    int priceValue = int.parse(_priceController.text.replaceAll('.', '')); // Menghapus format Rupiah
-    String? imageUrl = await _uploadToImgBB(_imageBytes!);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Mengunggah gambar..."), backgroundColor: Colors.blue),
+    );
+
+    int priceValue = int.parse(_priceController.text.replaceAll('.', ''));
+    String? imageUrl = await _uploadToFlask(_imageBytes!);
     if (imageUrl == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Gagal mengunggah gambar"), backgroundColor: Colors.red),
@@ -102,8 +137,13 @@ class _AddProductScreenState extends State<AddProductScreen> {
       const SnackBar(content: Text("Produk berhasil ditambahkan!"), backgroundColor: Colors.green),
     );
 
-    Navigator.pop(context);
-    // Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const OwnerDashboardScreen()));
+    // Redirect ke DashboardScreen setelah berhasil tambah produk
+    Future.delayed(const Duration(seconds: 1), () {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const OwnerDashboardScreen()),
+      );
+    });
   }
 
   @override
