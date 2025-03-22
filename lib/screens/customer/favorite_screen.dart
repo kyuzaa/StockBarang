@@ -15,6 +15,8 @@ class FavoriteScreen extends StatelessWidget {
     {'name': 'Produk H', 'image': "https://via.placeholder.com/150"},
   ];
 
+  FavoriteScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -32,7 +34,7 @@ class FavoriteScreen extends StatelessWidget {
             Container(
               width: double.infinity,
               height: 150,
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 image: DecorationImage(
                   image: AssetImage('assets/banner_waroeng.jpg'),
                   fit: BoxFit.cover,

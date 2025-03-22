@@ -120,9 +120,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: Text("Tambah Produk", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
+        title: const Text("Tambah Produk", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
         flexibleSpace: Container(
-          decoration: BoxDecoration(
+          decoration: const BoxDecoration(
             gradient: LinearGradient(
               colors: [Colors.deepPurple, Colors.blueAccent],
               begin: Alignment.topLeft,
@@ -134,14 +134,14 @@ class _AddProductScreenState extends State<AddProductScreen> {
         elevation: 6,
       ),
       body: SingleChildScrollView(
-        padding: EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _buildImagePicker(),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             _buildForm(),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             _buildSubmitButton(),
           ],
         ),
@@ -163,7 +163,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
           ),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: Colors.blueAccent, width: 2),
-          boxShadow: [
+          boxShadow: const [
             BoxShadow(
               color: Colors.black12,
               blurRadius: 8,
@@ -172,7 +172,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
             ),
           ],
         ),
-        child: Center(child: Icon(Icons.camera_alt, size: 60, color: Colors.deepPurple)),
+        child: const Center(child: Icon(Icons.camera_alt, size: 60, color: Colors.deepPurple)),
       ),
     );
   }
@@ -183,7 +183,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
       elevation: 8,
       shadowColor: Colors.blueAccent.withOpacity(0.3),
       child: Padding(
-        padding: EdgeInsets.all(20),
+        padding: const EdgeInsets.all(20),
         child: Column(
           children: [
             _buildTextField("Nama Produk", _nameController),
@@ -200,19 +200,19 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
   Widget _buildTextField(String label, TextEditingController controller, {bool isNumber = false, int maxLines = 1}) {
     return Padding(
-      padding: EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.only(bottom: 16),
       child: TextField(
         controller: controller,
         keyboardType: isNumber ? TextInputType.number : TextInputType.text,
         maxLines: maxLines,
         decoration: InputDecoration(
           labelText: label,
-          labelStyle: TextStyle(color: Colors.deepPurple, fontWeight: FontWeight.bold),
+          labelStyle: const TextStyle(color: Colors.deepPurple, fontWeight: FontWeight.bold),
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
-          contentPadding: EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(15),
-            borderSide: BorderSide(color: Colors.blueAccent, width: 2),
+            borderSide: const BorderSide(color: Colors.blueAccent, width: 2),
           ),
         ),
       ),
@@ -221,13 +221,13 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
   Widget _buildDropdown() {
     return Padding(
-      padding: EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.only(bottom: 16),
       child: DropdownButtonFormField<String>(
         value: _selectedCategory,
         decoration: InputDecoration(
           labelText: "Kategori",
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
-          contentPadding: EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
         ),
         items: _categories.map((String category) {
           return DropdownMenuItem<String>(
@@ -244,7 +244,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
   Widget _buildSwitch() {
     return SwitchListTile(
-      title: Text("Status Produk (Aktif/Tidak Aktif)"),
+      title: const Text("Status Produk (Aktif/Tidak Aktif)"),
       value: _isActive,
       activeColor: Colors.blueAccent,
       onChanged: (bool value) => setState(() => _isActive = value),
@@ -256,12 +256,12 @@ class _AddProductScreenState extends State<AddProductScreen> {
       onPressed: () {},
       style: ElevatedButton.styleFrom(
         backgroundColor: Colors.blueAccent,
-        padding: EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
         elevation: 8,
       ),
-      icon: Icon(Icons.check_circle, color: Colors.white),
-      label: Text("Tambah Produk", style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold)),
+      icon: const Icon(Icons.check_circle, color: Colors.white),
+      label: const Text("Tambah Produk", style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold)),
     );
   }
 }
