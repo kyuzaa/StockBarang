@@ -1,9 +1,11 @@
-import 'dart:io';
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart' as path;
+import 'package:intl/intl.dart';
+import 'package:pos/screens/owner/dashboard_screen.dart';
 
 class EditProductScreen extends StatefulWidget {
   final String productId;
@@ -19,10 +21,18 @@ class _EditProductScreenState extends State<EditProductScreen> {
   final TextEditingController _priceController = TextEditingController();
   final TextEditingController _stockController = TextEditingController();
   final TextEditingController _descController = TextEditingController();
-  final TextEditingController _categoryController = TextEditingController();
+  String _selectedCategory = "Makanan"; // Default category
+  
   bool _isActive = true;
-  File? _image;
-  String? _existingImagePath;
+  Uint8List? _imageBytes;
+  String? _existingImageUrl;
+
+  final List<String> _categories = [
+    'Bahan Pokok', 'Minuman', 'Alat Mandi', 'Makanan Ringan',
+    'Alat Kebersihan', 'Alat Tulis', 'Obat'
+  ];
+
+  final NumberFormat currencyFormat = NumberFormat.currency(locale: "id_ID", symbol: "Rp ", decimalDigits: 0);
 
   @override
   void initState() {
@@ -31,62 +41,105 @@ class _EditProductScreenState extends State<EditProductScreen> {
   }
 
   Future<void> _loadProductData() async {
-    DocumentSnapshot productSnapshot = await FirebaseFirestore.instance.collection("products").doc(widget.productId).get();
+    DocumentSnapshot productSnapshot =
+        await FirebaseFirestore.instance.collection("products").doc(widget.productId).get();
 
     if (productSnapshot.exists) {
       Map<String, dynamic> data = productSnapshot.data() as Map<String, dynamic>;
 
       setState(() {
         _nameController.text = data["name"];
-        _priceController.text = data["price"].toString();
+        _priceController.text = currencyFormat.format(data["price"]);
         _stockController.text = data["stock"].toString();
         _descController.text = data["description"];
-        _categoryController.text = data["category"];
+        _selectedCategory = data["category"] ?? "Makanan";
         _isActive = data["status"];
-        _existingImagePath = data["imageUrl"];
+        _existingImageUrl = data["imageUrl"];
       });
     }
   }
 
   Future<void> _pickImage() async {
     final pickedFile = await ImagePicker().pickImage(source: ImageSource.gallery);
-
     if (pickedFile != null) {
-      final tempDir = await getApplicationDocumentsDirectory();
-      final savedImage = File('${tempDir.path}/${path.basename(pickedFile.path)}');
-      await File(pickedFile.path).copy(savedImage.path);
-      
-      setState(() {
-        _image = savedImage;
-      });
+      final bytes = await pickedFile.readAsBytes();
+      setState(() => _imageBytes = bytes);
+    }
+  }
+
+  void _formatPrice(String value) {
+    String newValue = value.replaceAll(RegExp(r'[^\d]'), ''); // Hanya angka
+    if (newValue.isNotEmpty) {
+      double parsed = double.parse(newValue);
+      _priceController.value = TextEditingValue(
+        text: currencyFormat.format(parsed), // Format sebagai Rupiah
+        selection: TextSelection.collapsed(offset: currencyFormat.format(parsed).length),
+      );
+    }
+  }
+
+  Future<String?> _uploadToFlask(Uint8List imageBytes) async {
+    var request = http.MultipartRequest(
+      'POST',
+      Uri.parse("http://174.138.31.117:5000/upload"),
+    );
+
+    String formattedCategory = _selectedCategory.replaceAll(RegExp(r'[^\w\s]'), '').replaceAll(' ', '-');
+    String formattedName = _nameController.text.replaceAll(RegExp(r'[^\w\s]'), '').replaceAll(' ', '-');
+    String fileName = "$formattedCategory-$formattedName.jpg";
+    request.files.add(http.MultipartFile.fromBytes('image', imageBytes, filename: fileName));
+
+    var response = await request.send();
+    if (response.statusCode == 200) {
+      var jsonResponse = json.decode(await response.stream.bytesToString());
+      return jsonResponse['image_url'];
+    } else {
+      return null;
     }
   }
 
   Future<void> _updateProduct() async {
     if (_nameController.text.isEmpty || _priceController.text.isEmpty || _stockController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Harap isi semua field")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Harap isi semua field"), backgroundColor: Colors.red),
+      );
       return;
     }
 
-    String imagePath = _image?.path ?? _existingImagePath ?? "";
+    int priceValue = int.parse(_priceController.text.replaceAll(RegExp(r'[^0-9]'), ''));
+    String? imageUrl = _existingImageUrl; // Gunakan gambar lama jika tidak ada gambar baru
+
+    if (_imageBytes != null) {
+      imageUrl = await _uploadToFlask(_imageBytes!);
+      if (imageUrl == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Gagal mengunggah gambar"), backgroundColor: Colors.red),
+        );
+        return;
+      }
+    }
 
     await FirebaseFirestore.instance.collection("products").doc(widget.productId).update({
       "name": _nameController.text,
-      "price": int.parse(_priceController.text),
+      "price": priceValue,
       "stock": int.parse(_stockController.text),
       "description": _descController.text,
-      "category": _categoryController.text,
+      "category": _selectedCategory,
       "status": _isActive,
-      "imageUrl": imagePath,
+      "imageUrl": imageUrl,
       "updatedAt": Timestamp.now(),
     });
 
-    Navigator.pop(context);
-  }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Produk berhasil diubah!"), backgroundColor: Colors.green),
+    );
 
-  Future<void> _deleteProduct() async {
-    await FirebaseFirestore.instance.collection("products").doc(widget.productId).delete();
-    Navigator.pop(context);
+    Future.delayed(const Duration(seconds: 1), () {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const OwnerDashboardScreen()),
+      );
+    });
   }
 
   @override
@@ -108,19 +161,23 @@ class _EditProductScreenState extends State<EditProductScreen> {
                 child: CircleAvatar(
                   radius: 60,
                   backgroundColor: Colors.grey[300],
-                  backgroundImage: _image != null ? FileImage(_image!) : (_existingImagePath != null && _existingImagePath!.isNotEmpty
-                      ? FileImage(File(_existingImagePath!))
-                      : null),
-                  child: _image == null && _existingImagePath == null ? const Icon(Icons.camera_alt, size: 40) : null,
+                  backgroundImage: _imageBytes != null
+                      ? MemoryImage(_imageBytes!)
+                      : (_existingImageUrl != null && _existingImageUrl!.isNotEmpty
+                          ? NetworkImage(_existingImageUrl!) as ImageProvider
+                          : null),
+                  child: _imageBytes == null && _existingImageUrl == null
+                      ? const Icon(Icons.camera_alt, size: 40)
+                      : null,
                 ),
               ),
             ),
             const SizedBox(height: 20),
             _buildTextField(_nameController, "Nama Produk"),
-            _buildTextField(_priceController, "Harga", TextInputType.number),
+            _buildTextField(_priceController, "Harga", TextInputType.number, _formatPrice),
             _buildTextField(_stockController, "Stok", TextInputType.number),
             _buildTextField(_descController, "Deskripsi"),
-            _buildTextField(_categoryController, "Kategori"),
+            _buildDropdownCategory(),
             SwitchListTile(
               title: const Text("Status Produk (Aktif/Tidak Aktif)"),
               value: _isActive,
@@ -131,26 +188,10 @@ class _EditProductScreenState extends State<EditProductScreen> {
               },
             ),
             const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                ElevatedButton(
-                  onPressed: _updateProduct,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
-                  ),
-                  child: const Text("Simpan", style: TextStyle(fontSize: 16, color: Colors.white)),
-                ),
-                ElevatedButton(
-                  onPressed: _deleteProduct,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
-                    padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
-                  ),
-                  child: const Text("Hapus", style: TextStyle(fontSize: 16, color: Colors.white)),
-                ),
-              ],
+            ElevatedButton(
+              onPressed: _updateProduct,
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+              child: const Text("Simpan", style: TextStyle(color: Colors.white)),
             ),
           ],
         ),
@@ -158,16 +199,35 @@ class _EditProductScreenState extends State<EditProductScreen> {
     );
   }
 
-  Widget _buildTextField(TextEditingController controller, String label, [TextInputType keyboardType = TextInputType.text]) {
+  Widget _buildTextField(TextEditingController controller, String label,
+      [TextInputType keyboardType = TextInputType.text, Function(String)? onChanged]) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: TextField(
         controller: controller,
         keyboardType: keyboardType,
+        onChanged: onChanged,
         decoration: InputDecoration(
           labelText: label,
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         ),
+      ),
+    );
+  }
+
+  Widget _buildDropdownCategory() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: DropdownButtonFormField<String>(
+        value: _selectedCategory,
+        decoration: InputDecoration(border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
+        items: _categories.map((String category) {
+          return DropdownMenuItem<String>(
+            value: category,
+            child: Text(category),
+          );
+        }).toList(),
+        onChanged: (value) => setState(() => _selectedCategory = value!),
       ),
     );
   }

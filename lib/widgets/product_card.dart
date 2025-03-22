@@ -1,6 +1,80 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:http/http.dart' as http;
+import 'dart:typed_data';
+
+class ProductImage extends StatefulWidget {
+  final String imageUrl;
+  const ProductImage({super.key, required this.imageUrl});
+
+  @override
+  _ProductImageState createState() => _ProductImageState();
+}
+
+class _ProductImageState extends State<ProductImage> {
+  Uint8List? _imageBytes;
+  bool _isLoading = true;
+  final bool _isError = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadImage();
+  }
+
+  Future<void> _loadImage() async {
+  try {
+    final response = await http.get(Uri.parse(widget.imageUrl), headers: {
+    "User-Agent": "Mozilla/5.0",
+    "Accept": "image/*",
+    'Accept-Encoding': 'gzip, deflate, br',
+    "Connection": "Keep-Alive",
+  },).timeout(const Duration(seconds: 10));
+    if (response.statusCode == 200) {
+      setState(() {
+        _imageBytes = response.bodyBytes;
+        _isLoading = false;
+      });
+    } else {
+      throw Exception("Gagal memuat gambar");
+    }
+  } catch (e) {
+    print("Error loading image: $e");
+    setState(() {
+      _isLoading = false;
+    });
+  }
+}
+
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Shimmer.fromColors(
+        baseColor: Colors.grey.shade300,
+        highlightColor: Colors.white,
+        child: Container(width: double.infinity, height: 100, color: Colors.grey),
+      );
+    }
+
+    if (_isError || _imageBytes == null) {
+      return Image.asset(
+        'assets/no_image.jpg',
+        height: 100,
+        width: double.infinity,
+        fit: BoxFit.cover,
+      );
+    }
+
+    return Image.memory(
+      _imageBytes!,
+      width: double.infinity,
+      height: 100,
+      fit: BoxFit.cover,
+    );
+  }
+}
 
 class ProductCard extends StatelessWidget {
   final Map<String, dynamic> product;
@@ -14,33 +88,17 @@ class ProductCard extends StatelessWidget {
     final bool isOutOfStock = product['stock'] == 0;
 
     return SizedBox(
-      width: 150, // Atur lebar agar tidak terlalu kecil
+      width: 150,
       child: Card(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         elevation: 3,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Gambar Produk dengan Placeholder Shimmer
+            // Gambar Produk dengan ProductImage
             ClipRRect(
               borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
-              child: Image.network(
-                product['imageUrl'] ?? '',
-                width: double.infinity,
-                height: 100,
-                fit: BoxFit.cover,
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) return child;
-                  return Shimmer.fromColors(
-                    baseColor: Colors.grey.shade300,
-                    highlightColor: Colors.white,
-                    child: Container(width: double.infinity, height: 100, color: Colors.grey),
-                  );
-                },
-                errorBuilder: (context, error, stackTrace) {
-                  return Image.asset('assets/no_image.jpg', height: 100, width: double.infinity, fit: BoxFit.cover);
-                },
-              ),
+              child: ProductImage(imageUrl: product['imageUrl']),
             ),
 
             const SizedBox(height: 8),
@@ -74,7 +132,7 @@ class ProductCard extends StatelessWidget {
               ),
             ),
 
-            const Spacer(), // Pastikan ini ada untuk mencegah overflow
+            const Spacer(),
 
             // Tombol Tambah ke Keranjang
             Padding(
