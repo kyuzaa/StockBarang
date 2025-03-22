@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:pos/widgets/product_card.dart';
 import 'package:pos/widgets/category_button.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -13,48 +12,40 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   String? selectedCategory;
-  String searchQuery = ""; // Menyimpan teks pencarian
+  String searchQuery = "";
 
   void _handleCategorySelection(String? category) {
     setState(() {
       selectedCategory = category;
-      searchQuery = ""; // Reset pencarian jika memilih kategori
+      searchQuery = ""; // Reset pencarian saat kategori berubah
     });
   }
 
   void _handleSearch(String query) {
     setState(() {
-      searchQuery = query.toLowerCase(); // Simpan query dalam huruf kecil untuk pencarian case-insensitive
-      selectedCategory = null; // Reset kategori saat melakukan pencarian
+      searchQuery = query;
     });
   }
 
-  Future<void> _handleAddToCart(BuildContext context, Map<String, dynamic> product) async {
-    User? user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-
-    String userId = user.uid;
-    CollectionReference cartRef = FirebaseFirestore.instance.collection('cart').doc(userId).collection('items');
-
-    QuerySnapshot existingProduct = await cartRef.where('id', isEqualTo: product['id']).get();
-
-    if (existingProduct.docs.isNotEmpty) {
-      var docId = existingProduct.docs.first.id;
-      var currentQuantity = existingProduct.docs.first['quantity'];
-      await cartRef.doc(docId).update({'quantity': currentQuantity + 1});
-    } else {
-      await cartRef.add({
-        'id': product['id'],
-        'name': product['name'],
-        'price': product['price'],
-        'image': product['image'],
-        'quantity': 1,
-      });
-    }
-
+  void _handleAddToCart(BuildContext context, Map<String, dynamic> product) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('${product["name"]} ditambahkan ke keranjang!')),
     );
+  }
+
+  Stream<QuerySnapshot> _getProductStream() {
+    Query<Map<String, dynamic>> query = FirebaseFirestore.instance.collection("products");
+
+    if (selectedCategory != null) {
+      query = query.where("category", isEqualTo: selectedCategory);
+    }
+
+    if (searchQuery.isNotEmpty) {
+      query = query.where("name", isGreaterThanOrEqualTo: searchQuery)
+                  .where("name", isLessThanOrEqualTo: "$searchQuery\uf8ff");
+    }
+
+    return query.snapshots();
   }
 
   @override
@@ -64,7 +55,11 @@ class _HomeScreenState extends State<HomeScreen> {
         backgroundColor: Colors.blue.shade700,
         title: const Text(
           "Waroeng Barokan",
-          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
         ),
         centerTitle: true,
         elevation: 0,
@@ -81,7 +76,11 @@ class _HomeScreenState extends State<HomeScreen> {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(10),
                 boxShadow: const [
-                  BoxShadow(color: Colors.black26, blurRadius: 5, offset: Offset(0, 3)),
+                  BoxShadow(
+                    color: Colors.black26,
+                    blurRadius: 5,
+                    offset: Offset(0, 3),
+                  ),
                 ],
               ),
               child: ClipRRect(
@@ -118,7 +117,9 @@ class _HomeScreenState extends State<HomeScreen> {
               padding: EdgeInsets.symmetric(horizontal: 16),
               child: Text("Kategori", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             ),
+             
             const SizedBox(height: 10),
+             
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
@@ -158,38 +159,67 @@ class _HomeScreenState extends State<HomeScreen> {
                     label: "Obat",
                     onTap: () => _handleCategorySelection("Obat"),
                   ),
-                  TextButton(
-                    onPressed: () => _handleCategorySelection(null), // Reset filter
-                    child: const Text("Reset Filter"),
-                  ),
+
                 ],
               ),
             ),
+            TextButton(
+              onPressed: () => _handleCategorySelection(null),
+              child: const Text("Reset Filter"),
+            ),
+            const SizedBox(height: 20),
+
+            // Produk Terbaru (Hanya tampil jika tidak memilih kategori dan tidak mencari)
+            // Produk Terbaru (Hanya tampil jika tidak memilih kategori dan tidak mencari)
+          if (selectedCategory == null && searchQuery.isEmpty) ...[
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 14),
+              child: Text("Produk Terbaru", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            ),
+            SizedBox(
+              height: 250, // Sesuaikan tinggi agar cukup untuk satu baris produk
+              child: StreamBuilder(
+                stream: FirebaseFirestore.instance
+                    .collection("products")
+                    .orderBy("createdAt", descending: true)
+                    .limit(4)
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                  var products = snapshot.data!.docs;
+                  return ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    scrollDirection: Axis.horizontal, // Produk ditampilkan ke samping
+                    itemCount: products.length,
+                    itemBuilder: (context, index) {
+                      var productData = products[index].data();
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 10), // Beri sedikit jarak antar produk
+                        child: SizedBox(
+                          width: 150,// Atur ukuran produk agar cukup besar
+                          child: ProductCard(
+                            product: productData,
+                            onAddToCart: () => _handleAddToCart(context, productData),
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+
 
             const SizedBox(height: 20),
 
-            // Produk yang sesuai dengan pencarian atau kategori
+            // Produk berdasarkan kategori atau pencarian
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 16),
-              child: Text("Produk", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              child: Text("Semua Produk", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             ),
             StreamBuilder(
-              stream: (searchQuery.isNotEmpty)
-                  ? FirebaseFirestore.instance
-                      .collection("products")
-                      .where("name_lowercase", isGreaterThanOrEqualTo: searchQuery)
-                      .where("name_lowercase", isLessThan: '${searchQuery}z')
-                      .snapshots()
-                  : (selectedCategory != null)
-                      ? FirebaseFirestore.instance
-                          .collection("products")
-                          .where("category", isEqualTo: selectedCategory)
-                          .snapshots()
-                      : FirebaseFirestore.instance
-                          .collection("products")
-                          .orderBy("createdAt", descending: true)
-                          .limit(6)
-                          .snapshots(),
+              stream: _getProductStream(),
               builder: (context, snapshot) {
                 if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
                 var filteredProducts = snapshot.data!.docs;
@@ -205,7 +235,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   itemCount: filteredProducts.length,
                   itemBuilder: (context, index) {
-                    var productData = filteredProducts[index].data();
+                    var productData = filteredProducts[index].data() as Map<String, dynamic>;
                     return ProductCard(
                       product: productData,
                       onAddToCart: () => _handleAddToCart(context, productData),

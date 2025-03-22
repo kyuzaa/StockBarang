@@ -17,7 +17,33 @@ class _SplashScreenState extends State<SplashScreen> {
   void initState() {
     super.initState();
     Future.microtask(() => Provider.of<AuthProvider>(context, listen: false).checkLoginStatus());
+  }
 
+  void _showPopup(BuildContext context, String userName) {
+    showDialog(
+      context: context,
+      barrierDismissible: false, // Jangan bisa ditutup manual
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.black.withOpacity(0.8),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Text(
+            "Anda login sebagai $userName",
+            style: const TextStyle(color: Colors.white, fontSize: 16),
+            textAlign: TextAlign.center,
+          ),
+        ),
+      ),
+    );
+
+    // Auto close setelah 2 detik
+    Future.delayed(const Duration(seconds: 2), () {
+      Navigator.of(context).pop();
+    });
   }
 
   @override
@@ -33,23 +59,28 @@ class _SplashScreenState extends State<SplashScreen> {
           });
         } else if (authProvider.role != null) {
           Future.delayed(Duration.zero, () {
-            if (authProvider.role == 'Owner') {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => const OwnerDashboardScreen()),
-              );
-            } else {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => const CustomerDashboardScreen()),
-              );
-            }
+            String userName = authProvider.userName;
+            _showPopup(context, userName); // Munculkan popup
+
+            Future.delayed(const Duration(seconds: 2), () { 
+              if (authProvider.role == 'Owner') {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => const OwnerDashboardScreen()),
+                );
+              } else {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => const CustomerDashboardScreen()),
+                );
+              }
+            });
           });
         }
 
         return const Scaffold(
           body: Center(
-            child: CircularProgressIndicator(), // Loading indikator
+            child: CircularProgressIndicator(),
           ),
         );
       },
