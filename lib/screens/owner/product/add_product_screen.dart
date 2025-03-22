@@ -29,7 +29,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
   final NumberFormat currencyFormat = NumberFormat("#,###", "id_ID");
 
-  Future<void> pickImage() async {
+  Future<void> _pickImage() async {
     final pickedFile = await ImagePicker().pickImage(source: ImageSource.gallery);
     print(pickedFile);
     if (pickedFile != null) {
@@ -38,7 +38,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
     }
   }
 
-  void formatPrice(String value) {
+  void _formatPrice(String value) {
     String newValue = value.replaceAll(RegExp(r'[^\d]'), ''); // Hanya angka
     if (newValue.isNotEmpty) {
       double parsed = double.parse(newValue);
@@ -50,19 +50,11 @@ class _AddProductScreenState extends State<AddProductScreen> {
   }
 
   Future<String?> _uploadToImgBB(Uint8List imageBytes) async {
-    if (_selectedCategory == null || _nameController.text.isEmpty) {
-      return null;
-    }
-
-    String formattedCategory = _selectedCategory!.replaceAll(RegExp(r'[^\w\s]'), '').replaceAll(' ', '-');
-    String formattedName = _nameController.text.replaceAll(RegExp(r'[^\w\s]'), '').replaceAll(' ', '-');
-    String fileName = "$formattedCategory-$formattedName.jpg";
-
     String apiKey = "ad3ec51569161f45a269c56875f60d58"; // Ganti dengan API Key ImgBB
     Uri uri = Uri.parse("https://api.imgbb.com/1/upload?key=$apiKey");
 
     var request = http.MultipartRequest('POST', uri);
-    request.files.add(http.MultipartFile.fromBytes('image', imageBytes, filename: fileName));
+    request.files.add(http.MultipartFile.fromBytes('image', imageBytes, filename: 'product.jpg'));
 
     var response = await request.send();
     if (response.statusCode == 200) {
@@ -73,8 +65,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
     }
   }
 
-
-  Future<void> addProduct() async {
+  Future<void> _addProduct() async {
     if (_nameController.text.isEmpty ||
         _priceController.text.isEmpty ||
         _stockController.text.isEmpty ||
@@ -151,7 +142,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
   Widget _buildImagePicker() {
     return GestureDetector(
-      onTap: () {},
+      onTap: _pickImage,
       child: Container(
         width: double.infinity,
         height: 200,
@@ -172,7 +163,12 @@ class _AddProductScreenState extends State<AddProductScreen> {
             ),
           ],
         ),
-        child: const Center(child: Icon(Icons.camera_alt, size: 60, color: Colors.deepPurple)),
+        child: _imageBytes == null
+            ? const Center(child: Icon(Icons.camera_alt, size: 60, color: Colors.deepPurple))
+            : ClipRRect(
+                borderRadius: BorderRadius.circular(18),
+                child: Image.memory(_imageBytes!, fit: BoxFit.cover, width: double.infinity, height: 200),
+              ),
       ),
     );
   }
@@ -187,7 +183,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
         child: Column(
           children: [
             _buildTextField("Nama Produk", _nameController),
-            _buildTextField("Harga", _priceController, isNumber: true),
+            _buildTextField("Harga", _priceController, isNumber: true, onChanged: _formatPrice),
             _buildTextField("Stok", _stockController, isNumber: true),
             _buildTextField("Deskripsi", _descController, maxLines: 3),
             _buildDropdown(),
@@ -198,13 +194,15 @@ class _AddProductScreenState extends State<AddProductScreen> {
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController controller, {bool isNumber = false, int maxLines = 1}) {
+  Widget _buildTextField(String label, TextEditingController controller,
+      {bool isNumber = false, int maxLines = 1, Function(String)? onChanged}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: TextField(
         controller: controller,
         keyboardType: isNumber ? TextInputType.number : TextInputType.text,
         maxLines: maxLines,
+        onChanged: onChanged,
         decoration: InputDecoration(
           labelText: label,
           labelStyle: const TextStyle(color: Colors.deepPurple, fontWeight: FontWeight.bold),
@@ -253,7 +251,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
   Widget _buildSubmitButton() {
     return ElevatedButton.icon(
-      onPressed: () {},
+      onPressed: _addProduct,
       style: ElevatedButton.styleFrom(
         backgroundColor: Colors.blueAccent,
         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
