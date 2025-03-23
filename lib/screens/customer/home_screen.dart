@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:pos/widgets/product_card.dart';
@@ -27,11 +28,46 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  void _handleAddToCart(BuildContext context, Map<String, dynamic> product) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('${product["name"]} ditambahkan ke keranjang!')),
-    );
+  void _handleAddToCart(BuildContext context, Map<String, dynamic> product) async {
+    try {
+      if (product['id'] == null || product['id'].toString().isEmpty) {
+        throw Exception("Produk tidak memiliki ID yang valid");
+      }
+
+      String userId = FirebaseAuth.instance.currentUser?.uid ?? "guest";
+      CollectionReference cartCollection = FirebaseFirestore.instance.collection('cart').doc(userId).collection('items');
+
+      DocumentReference productRef = cartCollection.doc(product['id']);
+      DocumentSnapshot cartItem = await productRef.get();
+
+      if (cartItem.exists) {
+        int currentQuantity = cartItem.get('quantity');
+        await productRef.update({'quantity': currentQuantity + 1});
+      } else {
+        await productRef.set({
+          'id': product['id'],
+          'name': product['name'],
+          'price': product['price'],
+          'image': product['imageUrl'],
+          'quantity': 1,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      }
+
+      // **Mengurangi stok produk**
+      DocumentReference productDoc = FirebaseFirestore.instance.collection('products').doc(product['id']);
+      await productDoc.update({'stock': FieldValue.increment(-1)});
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${product["name"]} ditambahkan ke keranjang!')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal menambahkan ke keranjang: $e')),
+      );
+    }
   }
+
 
   Stream<QuerySnapshot> _getProductStream() {
     Query<Map<String, dynamic>> query = FirebaseFirestore.instance.collection("products");
@@ -45,7 +81,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   .where("name", isLessThanOrEqualTo: "$searchQuery\uf8ff");
     }
 
-    return query.snapshots();
+    return FirebaseFirestore.instance.collection('products').snapshots();
   }
 
   @override
@@ -236,6 +272,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   itemCount: filteredProducts.length,
                   itemBuilder: (context, index) {
                     var productData = filteredProducts[index].data() as Map<String, dynamic>;
+                    productData['id'] = filteredProducts[index].id;
                     return ProductCard(
                       product: productData,
                       onAddToCart: () => _handleAddToCart(context, productData),

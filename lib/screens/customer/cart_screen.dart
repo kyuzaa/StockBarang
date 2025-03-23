@@ -11,21 +11,21 @@ class CartScreen extends StatefulWidget {
 
 class _CartScreenState extends State<CartScreen> {
   User? user = FirebaseAuth.instance.currentUser;
-  late CollectionReference cartRef;
+  late CollectionReference cartItemsRef;
 
   @override
   void initState() {
     super.initState();
     if (user != null) {
-      cartRef = FirebaseFirestore.instance.collection('cart').doc(user!.uid).collection('items');
+      cartItemsRef = FirebaseFirestore.instance.collection('cart').doc(user!.uid).collection('items');
     }
   }
 
   Future<void> updateQuantity(String docId, int change, int currentQuantity) async {
     if (currentQuantity + change <= 0) {
-      await cartRef.doc(docId).delete();
+      await cartItemsRef.doc(docId).delete();
     } else {
-      await cartRef.doc(docId).update({'quantity': currentQuantity + change});
+      await cartItemsRef.doc(docId).update({'quantity': currentQuantity + change});
     }
   }
 
@@ -50,7 +50,7 @@ class _CartScreenState extends State<CartScreen> {
         backgroundColor: Colors.blue.shade700,
       ),
       body: StreamBuilder(
-        stream: cartRef.snapshots(),
+        stream: cartItemsRef.snapshots(),
         builder: (context, snapshot) {
           if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
           var cartItems = snapshot.data!.docs;
@@ -67,7 +67,7 @@ class _CartScreenState extends State<CartScreen> {
                           return ListTile(
                             leading: Image.network(item['image'], width: 50, height: 50, fit: BoxFit.cover),
                             title: Text(item['name']),
-                            subtitle: Text("Rp ${item['price']}"),
+                            subtitle: Text("Rp ${item['price']} x ${item['quantity']}"),
                             trailing: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
