@@ -1,10 +1,11 @@
-import 'dart:io';
+import 'dart:convert';
+import 'dart:typed_data';
+import 'package:http/http.dart' as http;
+
 import '../services/auth_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:path_provider/path_provider.dart';
 
 class AuthProvider with ChangeNotifier {
   final AuthService _authService = AuthService();
@@ -25,7 +26,7 @@ class AuthProvider with ChangeNotifier {
   String get userEmail => _email ?? 'Email Kosong';
   String get userPhone => _phone ?? 'Belum Ada No HP';
   String get userAddress => _address ?? 'Belum Ada Alamat';
-  String get userPhoto => _photoPath ?? 'assets/default_avatar.png';
+  String get userPhoto => _photoPath ?? 'assets/default_avatar.jpg';
 
   AuthProvider() {
     checkLoginStatus();
@@ -49,39 +50,49 @@ class AuthProvider with ChangeNotifier {
         _email = data['email'] ?? 'Email Kosong';
         _phone = data['no_telp'] ?? 'Belum Ada No HP';
         _address = data['alamat'] ?? 'Belum Ada Alamat';
-        _photoPath = data['photoPath'] ?? 'assets/default_avatar.png';
+        _photoPath = data['photoPath'] ?? 'assets/default_avatar.jpg';
         notifyListeners();
       }
     }
   }
 
   // Update Profile
-  Future<void> updateProfile(String name, String phone, String text) async {
+  Future<String?> uploadProfilePhotoToFlask(Uint8List imageBytes) async {
+    if (_user == null) return null;
+
+    String formattedName = _user!.displayName!.replaceAll(RegExp(r'[^\w\s]'), '').replaceAll(' ', '-');
+    String fileName = "$formattedName.jpg";
+
+    var request = http.MultipartRequest(
+      'POST',
+      Uri.parse("http://174.138.31.117:5000/upload"),
+    );
+
+    request.files.add(http.MultipartFile.fromBytes('image', imageBytes, filename: fileName));
+
+    var response = await request.send();
+    if (response.statusCode == 200) {
+      var jsonResponse = json.decode(await response.stream.bytesToString());
+      return jsonResponse['image_url'];
+    } else {
+      return null;
+    }
+  }
+
+  Future<void> updateProfile(String name, String phone, String address, String? imageUrl) async {
     if (_user != null) {
       await _user!.updateDisplayName(name);
       await _firestore.collection('users').doc(_user!.uid).update({
         'name': name,
         'phone': phone,
+        'alamat': address,
+        if (imageUrl != null) 'photoPath': imageUrl,
       });
 
-      _user = _auth.currentUser;
-      notifyListeners();
-    }
-  }
-
-  // Upload Foto Profile ke Local Storage
-  Future<void> uploadProfilePhoto() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-
-    if (pickedFile != null) {
-      final Directory appDir = await getApplicationDocumentsDirectory();
-      final String filePath = '${appDir.path}/profile_${_user!.uid}.jpg';
-      final File localFile = File(pickedFile.path);
-
-      await localFile.copy(filePath); // Simpan gambar di storage lokal
-
-      _photoPath = filePath;
+      _name = name;
+      _phone = phone;
+      _address = address;
+      if (imageUrl != null) _photoPath = imageUrl;
       notifyListeners();
     }
   }

@@ -28,46 +28,55 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  void _handleAddToCart(BuildContext context, Map<String, dynamic> product) async {
-    try {
-      if (product['id'] == null || product['id'].toString().isEmpty) {
-        throw Exception("Produk tidak memiliki ID yang valid");
-      }
-
-      String userId = FirebaseAuth.instance.currentUser?.uid ?? "guest";
-      CollectionReference cartCollection = FirebaseFirestore.instance.collection('cart').doc(userId).collection('items');
-
-      DocumentReference productRef = cartCollection.doc(product['id']);
-      DocumentSnapshot cartItem = await productRef.get();
-
-      if (cartItem.exists) {
-        int currentQuantity = cartItem.get('quantity');
-        await productRef.update({'quantity': currentQuantity + 1});
-      } else {
-        await productRef.set({
-          'id': product['id'],
-          'name': product['name'],
-          'price': product['price'],
-          'image': product['imageUrl'],
-          'quantity': 1,
-          'createdAt': FieldValue.serverTimestamp(),
-        });
-      }
-
-      // **Mengurangi stok produk**
-      DocumentReference productDoc = FirebaseFirestore.instance.collection('products').doc(product['id']);
-      await productDoc.update({'stock': FieldValue.increment(-1)});
-
+  void _handleAddToCart(BuildContext context, String productId) async {
+    User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${product["name"]} ditambahkan ke keranjang!')),
+        const SnackBar(content: Text("Silakan login terlebih dahulu")),
       );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal menambahkan ke keranjang: $e')),
-      );
+      return;
     }
+
+    DocumentSnapshot productSnapshot = await FirebaseFirestore.instance
+      .collection("products")
+      .doc(productId)
+      .get();
+
+    if (!productSnapshot.exists) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Produk tidak ditemukan")),
+      );
+      return;
+    }
+
+    Map<String, dynamic> product = productSnapshot.data() as Map<String, dynamic>;
+
+    DocumentReference cartRef = FirebaseFirestore.instance
+      .collection("cart")
+      .doc(user.uid)
+      .collection("items")
+      .doc(productId);
+
+    DocumentSnapshot cartItem  = await cartRef.get();
+
+    if (cartItem.exists) {
+      int currentQuantity = cartItem.get("quantity") ?? 0;
+      await cartRef.update({"quantity": currentQuantity + 1});
+    } else {
+      await cartRef.set({
+        "id": productId, // Gunakan ID dari Firestore
+        "name": product["name"],
+        "price": product["price"],
+        "image": product["imageUrl"] ?? "",
+        "quantity": 1,
+        "createdAt": FieldValue.serverTimestamp(),
+      });
   }
 
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('${product["name"]} ditambahkan ke keranjang!')),
+    );
+  }
 
   Stream<QuerySnapshot> _getProductStream() {
     Query<Map<String, dynamic>> query = FirebaseFirestore.instance.collection("products");
@@ -81,7 +90,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   .where("name", isLessThanOrEqualTo: "$searchQuery\uf8ff");
     }
 
-    return FirebaseFirestore.instance.collection('products').snapshots();
+    return query.snapshots();
   }
 
   @override
@@ -229,13 +238,14 @@ class _HomeScreenState extends State<HomeScreen> {
                     itemCount: products.length,
                     itemBuilder: (context, index) {
                       var productData = products[index].data();
+                      String productId = products[index].id;
                       return Padding(
                         padding: const EdgeInsets.only(right: 10), // Beri sedikit jarak antar produk
                         child: SizedBox(
                           width: 150,// Atur ukuran produk agar cukup besar
                           child: ProductCard(
                             product: productData,
-                            onAddToCart: () => _handleAddToCart(context, productData),
+                            onAddToCart: () => _handleAddToCart(context, productId),
                           ),
                         ),
                       );
@@ -272,10 +282,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   itemCount: filteredProducts.length,
                   itemBuilder: (context, index) {
                     var productData = filteredProducts[index].data() as Map<String, dynamic>;
-                    productData['id'] = filteredProducts[index].id;
+                    String productId = filteredProducts[index].id;
                     return ProductCard(
                       product: productData,
-                      onAddToCart: () => _handleAddToCart(context, productData),
+                      onAddToCart: () => _handleAddToCart(context, productId),
                     );
                   },
                 );

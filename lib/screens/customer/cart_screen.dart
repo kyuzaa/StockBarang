@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
 
 class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
@@ -11,21 +12,39 @@ class CartScreen extends StatefulWidget {
 
 class _CartScreenState extends State<CartScreen> {
   User? user = FirebaseAuth.instance.currentUser;
-  late CollectionReference cartItemsRef;
+  late CollectionReference cartRef;
+  String selectedDelivery = "1"; // '1' untuk Ambil Sendiri, '2' untuk Diantar
+  String userAddress = "Alamat belum diatur";
 
   @override
   void initState() {
     super.initState();
+    user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      cartItemsRef = FirebaseFirestore.instance.collection('cart').doc(user!.uid).collection('items');
+      cartRef = FirebaseFirestore.instance
+          .collection('cart')
+          .doc(user!.uid)
+          .collection('items');
+      _fetchUserAddress();
     }
+  }
+
+  Future<void> _fetchUserAddress() async {
+    if (user == null) return;
+    DocumentSnapshot userDoc = await FirebaseFirestore.instance
+        .collection("users")
+        .doc(user!.uid)
+        .get();
+    setState(() {
+      userAddress = userDoc.exists ? (userDoc["alamat"] ?? "Alamat belum diatur") : "Alamat belum diatur";
+    });
   }
 
   Future<void> updateQuantity(String docId, int change, int currentQuantity) async {
     if (currentQuantity + change <= 0) {
-      await cartItemsRef.doc(docId).delete();
+      await cartRef.doc(docId).delete();
     } else {
-      await cartItemsRef.doc(docId).update({'quantity': currentQuantity + change});
+      await cartRef.doc(docId).update({'quantity': currentQuantity + change});
     }
   }
 
@@ -33,6 +52,90 @@ class _CartScreenState extends State<CartScreen> {
     return cartItems.fold<int>(0, (sum, item) {
       return sum + ((item['price'] as num) * (item['quantity'] as num)).toInt();
     });
+  }
+
+  String formatRupiah(int amount) {
+    final format = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ');
+    return format.format(amount);
+  }
+
+  void _showCheckoutDialog(List<QueryDocumentSnapshot> cartItems, int totalPrice) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Checkout"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text("Alamat: $userAddress"),
+              const SizedBox(height: 10),
+              DropdownButton<String>(
+                value: selectedDelivery,
+                items: [
+                  DropdownMenuItem(value: "1", child: Text("Ambil Sendiri")),
+                  DropdownMenuItem(value: "2", child: Text("Diantar")),
+                ],
+                onChanged: (value) {
+                  setState(() {
+                    selectedDelivery = value!;
+                  });
+                },
+              ),
+              const SizedBox(height: 10),
+              ...cartItems.map((item) => ListTile(
+                    leading: Image.network(item['image'], width: 40, height: 40, fit: BoxFit.cover),
+                    title: Text(item['name']),
+                    subtitle: Text("${item['quantity']} x ${formatRupiah(item['price'])}"),
+                  )),
+              const SizedBox(height: 10),
+              Text("Total: ${formatRupiah(totalPrice)}", style: const TextStyle(fontWeight: FontWeight.bold)),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Batal"),
+            ),
+            ElevatedButton(
+              onPressed: () => _processCheckout(cartItems, totalPrice),
+              child: const Text("Proses Checkout"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _processCheckout(List<QueryDocumentSnapshot> cartItems, int totalPrice) async {
+    if (user == null) return;
+
+    List<Map<String, dynamic>> orderItems = cartItems.map((item) {
+      return {
+        "name": item["name"],
+        "price": item["price"],
+        "quantity": item["quantity"],
+        "image": item["image"],
+      };
+    }).toList();
+
+    await FirebaseFirestore.instance.collection("orders").add({
+      "userId": user!.uid,
+      "items": orderItems,
+      "total_harga": totalPrice,
+      "metode_pengiriman": selectedDelivery,  // Menggunakan angka '1' atau '2'
+      "alamat": userAddress,
+      "createdAt": FieldValue.serverTimestamp(),
+      "status": '1'
+    });
+
+    // Hapus isi keranjang setelah checkout
+    for (var item in cartItems) {
+      await cartRef.doc(item.id).delete();
+    }
+
+    Navigator.pop(context); // Tutup popup
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Pesanan berhasil dibuat!")));
   }
 
   @override
@@ -50,10 +153,11 @@ class _CartScreenState extends State<CartScreen> {
         backgroundColor: Colors.blue.shade700,
       ),
       body: StreamBuilder(
-        stream: cartItemsRef.snapshots(),
+        stream: cartRef.snapshots(),
         builder: (context, snapshot) {
           if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
           var cartItems = snapshot.data!.docs;
+          int totalPrice = calculateTotalPrice(cartItems);
 
           return Column(
             children: [
@@ -64,33 +168,56 @@ class _CartScreenState extends State<CartScreen> {
                         itemCount: cartItems.length,
                         itemBuilder: (context, index) {
                           var item = cartItems[index];
-                          return ListTile(
-                            leading: Image.network(item['image'], width: 50, height: 50, fit: BoxFit.cover),
-                            title: Text(item['name']),
-                            subtitle: Text("Rp ${item['price']} x ${item['quantity']}"),
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                IconButton(
-                                  icon: const Icon(Icons.remove),
-                                  onPressed: () => updateQuantity(item.id, -1, item['quantity']),
-                                ),
-                                Text("${item['quantity']}"),
-                                IconButton(
-                                  icon: const Icon(Icons.add),
-                                  onPressed: () => updateQuantity(item.id, 1, item['quantity']),
-                                ),
-                              ],
+                          return Card(
+                            margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                            child: ListTile(
+                              leading: ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.network(item['image'], width: 50, height: 50, fit: BoxFit.cover),
+                              ),
+                              title: Text(item['name'], style: const TextStyle(fontWeight: FontWeight.bold)),
+                              subtitle: Text(formatRupiah(item['price'])),
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.remove),
+                                    onPressed: () => updateQuantity(item.id, -1, item['quantity']),
+                                  ),
+                                  Text("${item['quantity']}"),
+                                  IconButton(
+                                    icon: const Icon(Icons.add),
+                                    onPressed: () => updateQuantity(item.id, 1, item['quantity']),
+                                  ),
+                                ],
+                              ),
                             ),
                           );
                         },
                       ),
               ),
-              Padding(
+              Container(
                 padding: const EdgeInsets.all(16),
-                child: ElevatedButton(
-                  onPressed: cartItems.isEmpty ? null : () {}, // Tambahkan fungsi checkout nanti
-                  child: Text("Checkout - Rp ${calculateTotalPrice(cartItems)}"),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade100,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      "Total Belanja: ${formatRupiah(totalPrice)}",
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 10),
+                    ElevatedButton(
+                      onPressed: cartItems.isEmpty ? null : () => _showCheckoutDialog(cartItems, totalPrice),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue.shade700,
+                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 50),
+                      ),
+                      child: const Text("Checkout", style: TextStyle(fontSize: 16, color: Colors.white)),
+                    ),
+                  ],
                 ),
               ),
             ],

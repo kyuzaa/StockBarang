@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 
 class OrdersScreen extends StatefulWidget {
   const OrdersScreen({super.key});
@@ -11,7 +12,6 @@ class OrdersScreen extends StatefulWidget {
 class _OrdersScreenState extends State<OrdersScreen> {
   String selectedStatus = '1'; // Default: Semua Pesanan
   String selectedDeliveryType = '1'; // Default: Ambil Sendiri
-  List<String> selectedOrders = [];
 
   @override
   Widget build(BuildContext context) {
@@ -79,22 +79,38 @@ class _OrdersScreenState extends State<OrdersScreen> {
                       child: ListView(
                         children: orders.map((order) {
                           var data = order.data() as Map<String, dynamic>;
-                          return Card(
-                            margin: const EdgeInsets.all(8),
-                            child: ListTile(
-                              title: Text("Customer: ${data["id_cust"]}"),
-                              subtitle: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text("${data["barang"].length} Produk"),
-                                  Text("Total: Rp ${data["total_harga"]}"),
-                                  Text("Jenis Pengiriman: ${data["jenis_pengiriman"] == "1" ? "Ambil Sendiri" : "Diantar"}"),
-                                  Text("Tanggal: ${data["tanggal"]}"),
-                                  Text("Status: ${_getStatusText(data["status"])}"),
-                                ],
-                              ),
-                              trailing: _buildActionButton(order.id, data),
-                            ),
+                          return FutureBuilder<DocumentSnapshot>(
+                            future: FirebaseFirestore.instance.collection('users').doc(data["userId"]).get(),
+                            builder: (context, userSnapshot) {
+                              if (!userSnapshot.hasData) {
+                                return const CircularProgressIndicator();
+                              }
+
+                              var userData = userSnapshot.data!.data() as Map<String, dynamic>;
+                              String customerName = userData["name"] ?? "Nama Tidak Ditemukan";
+                              print(customerName);
+
+                              return Card(
+                                margin: const EdgeInsets.all(8),
+                                child: ListTile(
+                                  title: Text("Customer: $customerName"),
+                                  subtitle: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text("${data["items"].length} Produk"),
+                                      Text("Total: Rp ${data["total_harga"]}"),
+                                      Text("Jenis Pengiriman: ${data["metode_pengiriman"] == "1" ? "Ambil Sendiri" : "Diantar"}"),
+                                      Text("Alamat: ${data["alamat"]}"),
+                                      Text("Tanggal: ${_formatDate(data["createdAt"])}"),
+                                      Text("Status: ${_getStatusText(data["status"])}"),
+                                      // Menampilkan produk dan gambar
+                                      ..._buildProductItems(data["items"]),
+                                    ],
+                                  ),
+                                  trailing: _buildActionButton(order.id, data),
+                                ),
+                              );
+                            },
                           );
                         }).toList(),
                       ),
@@ -112,10 +128,10 @@ class _OrdersScreenState extends State<OrdersScreen> {
   // Fungsi untuk filter pesanan berdasarkan status & jenis_pengiriman
   bool _filterOrders(Map<String, dynamic> data) {
     if (selectedStatus == "1") return true; // Semua Pesanan
-    if (selectedStatus == "2") return data["status"] == "2";
-    if (selectedStatus == "3") return data["status"] == "3" && data["jenis_pengiriman"] == "2"; // Siap Dikirim (Diantar)
-    if (selectedStatus == "4") return data["status"] == "4" && data["jenis_pengiriman"] == "1"; // Siap Diambil (Ambil Sendiri)
-    if (selectedStatus == "5") return data["status"] == "5" && data["jenis_pengiriman"] == selectedDeliveryType;
+    if (selectedStatus == "2") return data["status"] == "1"; // Pesanan Baru
+    if (selectedStatus == "3") return data["status"] == "3" && data["metode_pengiriman"] == "2"; // Siap Dikirim (Diantar)
+    if (selectedStatus == "4") return data["status"] == "4" && data["metode_pengiriman"] == "1"; // Siap Diambil (Ambil Sendiri)
+    if (selectedStatus == "5") return data["status"] == "5" && data["metode_pengiriman"] == selectedDeliveryType;
     return false;
   }
 
@@ -153,7 +169,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
     if (selectedStatus == "2") {
       buttonText = "Terima Pesanan";
-      newStatus = data["jenis_pengiriman"] == "2" ? "3" : "4"; // Jika diantar -> 3, jika ambil sendiri -> 4
+      newStatus = data["metode_pengiriman"] == "2" ? "3" : "4"; // Jika diantar -> 3, jika ambil sendiri -> 4
     } else if (selectedStatus == "3") {
       buttonText = "Kirim Pesanan";
       newStatus = "5";
@@ -209,5 +225,26 @@ class _OrdersScreenState extends State<OrdersScreen> {
         ),
       ),
     );
+  }
+
+  // Fungsi untuk format tanggal
+  String _formatDate(Timestamp timestamp) {
+    final date = DateTime.fromMillisecondsSinceEpoch(timestamp.seconds * 1000);
+    final format = DateFormat('dd/MM/yyyy HH:mm');
+    return format.format(date);
+  }
+
+  // Fungsi untuk menampilkan produk dalam items
+  List<Widget> _buildProductItems(List<dynamic> items) {
+    return items.map((item) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Image.network(item['image'], width: 100, height: 100, fit: BoxFit.cover),
+          Text(item['name'] ?? 'Nama Produk Tidak Ditemukan'),
+          Text('Harga: Rp ${item['price']}'),
+        ],
+      );
+    }).toList();
   }
 }

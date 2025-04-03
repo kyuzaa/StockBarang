@@ -34,3 +34,4 @@ flutter:
   assets:
     - assets/banner_waroeng.jpg
     - assets/no_image.jpg
+    - assets/default_avatar.jpg
