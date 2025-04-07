@@ -142,93 +142,130 @@ class _EditProductScreenState extends State<EditProductScreen> {
     });
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Edit Produk"),
-        centerTitle: true,
-        backgroundColor: Colors.deepPurple,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: GestureDetector(
-                onTap: _pickImage,
-                child: CircleAvatar(
-                  radius: 60,
-                  backgroundColor: Colors.grey[300],
-                  backgroundImage: _imageBytes != null
-                      ? MemoryImage(_imageBytes!)
-                      : (_existingImageUrl != null && _existingImageUrl!.isNotEmpty
-                          ? NetworkImage(_existingImageUrl!) as ImageProvider
-                          : null),
-                  child: _imageBytes == null && _existingImageUrl == null
-                      ? const Icon(Icons.camera_alt, size: 40)
-                      : null,
-                ),
+ // Hanya bagian dalam `build` yang diubah untuk keseragaman UI
+
+@override
+Widget build(BuildContext context) {
+  return Scaffold(
+    appBar: AppBar(
+      title: const Text("Edit Produk"),
+      centerTitle: true,
+      elevation: 0,
+    ),
+    body: SingleChildScrollView(
+      padding: const EdgeInsets.all(20.0),
+      child: Column(
+        children: [
+          GestureDetector(
+            onTap: _pickImage,
+            child: Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.grey[200],
+                image: _imageBytes != null
+                    ? DecorationImage(image: MemoryImage(_imageBytes!), fit: BoxFit.cover)
+                    : (_existingImageUrl != null && _existingImageUrl!.isNotEmpty
+                        ? DecorationImage(image: NetworkImage(_existingImageUrl!), fit: BoxFit.cover)
+                        : null),
               ),
+              child: _imageBytes == null && _existingImageUrl == null
+                  ? const Icon(Icons.camera_alt, size: 40, color: Colors.grey)
+                  : null,
             ),
-            const SizedBox(height: 20),
-            _buildTextField(_nameController, "Nama Produk"),
-            _buildTextField(_priceController, "Harga", TextInputType.number, _formatPrice),
-            _buildTextField(_stockController, "Stok", TextInputType.number),
-            _buildTextField(_descController, "Deskripsi"),
-            _buildDropdownCategory(),
-            SwitchListTile(
-              title: const Text("Status Produk (Aktif/Tidak Aktif)"),
-              value: _isActive,
-              onChanged: (bool value) {
-                setState(() {
-                  _isActive = value;
-                });
-              },
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
+          ),
+          const SizedBox(height: 25),
+
+          _buildLabel("Nama Produk"),
+          _buildTextField(_nameController),
+
+          _buildLabel("Harga Produk"),
+          _buildTextField(_priceController, TextInputType.number, _formatPrice),
+
+          _buildLabel("Jumlah Stok"),
+          _buildTextField(_stockController, TextInputType.number),
+
+          _buildLabel("Deskripsi Produk"),
+          _buildTextField(_descController),
+
+          _buildLabel("Kategori Produk"),
+          _buildDropdownCategory(),
+
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text("Status Produk (Aktif/Tidak Aktif)"),
+            value: _isActive,
+            onChanged: (bool value) {
+              setState(() {
+                _isActive = value;
+              });
+            },
+          ),
+
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
               onPressed: _updateProduct,
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-              child: const Text("Simpan", style: TextStyle(color: Colors.white)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blueAccent,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text("Simpan", style: TextStyle(fontSize: 16, color: Colors.white)),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
 
-  Widget _buildTextField(TextEditingController controller, String label,
-      [TextInputType keyboardType = TextInputType.text, Function(String)? onChanged]) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: TextField(
-        controller: controller,
-        keyboardType: keyboardType,
-        onChanged: onChanged,
-        decoration: InputDecoration(
-          labelText: label,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        ),
-      ),
-    );
-  }
+Widget _buildLabel(String text) {
+  return Container(
+    alignment: Alignment.centerLeft,
+    margin: const EdgeInsets.only(top: 15, bottom: 5),
+    child: Text(text, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+  );
+}
 
-  Widget _buildDropdownCategory() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: DropdownButtonFormField<String>(
-        value: _selectedCategory,
-        decoration: InputDecoration(border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
-        items: _categories.map((String category) {
-          return DropdownMenuItem<String>(
-            value: category,
-            child: Text(category),
-          );
-        }).toList(),
-        onChanged: (value) => setState(() => _selectedCategory = value!),
+Widget _buildTextField(TextEditingController controller,
+    [TextInputType keyboardType = TextInputType.text, Function(String)? onChanged]) {
+  return TextField(
+    controller: controller,
+    keyboardType: keyboardType,
+    onChanged: onChanged,
+    decoration: InputDecoration(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      focusedBorder: OutlineInputBorder(
+        borderSide: const BorderSide(color: Colors.blueAccent),
+        borderRadius: BorderRadius.circular(12),
       ),
-    );
-  }
+    ),
+  );
+}
+
+Widget _buildDropdownCategory() {
+  return DropdownButtonFormField<String>(
+    value: _selectedCategory,
+    decoration: InputDecoration(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      focusedBorder: OutlineInputBorder(
+        borderSide: const BorderSide(color: Colors.blueAccent),
+        borderRadius: BorderRadius.circular(12),
+      ),
+    ),
+    items: _categories.map((String category) {
+      return DropdownMenuItem<String>(
+        value: category,
+        child: Text(category),
+      );
+    }).toList(),
+    onChanged: (value) => setState(() => _selectedCategory = value!),
+  );
+}
+
 }

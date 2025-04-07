@@ -104,7 +104,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
         _stockController.text.isEmpty ||
         _selectedCategory == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Harap isi semua field"), backgroundColor: Colors.red),
+        const SnackBar(content: Text("Harap isi semua field"), backgroundColor: Colors.blueAccent),
       );
       return;
     }
@@ -117,7 +117,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
     String? imageUrl = await _uploadToFlask(_imageBytes!);
     if (imageUrl == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Gagal mengunggah gambar"), backgroundColor: Colors.red),
+        const SnackBar(content: Text("Gagal mengunggah gambar"), backgroundColor:Colors.blueAccent),
       );
       return;
     }
@@ -134,7 +134,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Produk berhasil ditambahkan!"), backgroundColor: Colors.green),
+      const SnackBar(content: Text("Produk berhasil ditambahkan!"), backgroundColor: Colors.blueAccent),
     );
 
     // Redirect ke DashboardScreen setelah berhasil tambah produk
@@ -151,18 +151,11 @@ class _AddProductScreenState extends State<AddProductScreen> {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: const Text("Tambah Produk", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.deepPurple, Colors.blueAccent],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
-        ),
+        title: const Text("Tambah Produk", style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: Colors.black)),
+        backgroundColor: Colors.white,
         centerTitle: true,
-        elevation: 6,
+        elevation: 2,
+        iconTheme: const IconThemeData(color: Colors.black),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -170,7 +163,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _buildImagePicker(),
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
             _buildForm(),
             const SizedBox(height: 20),
             _buildSubmitButton(),
@@ -184,29 +177,18 @@ class _AddProductScreenState extends State<AddProductScreen> {
     return GestureDetector(
       onTap: _pickImage,
       child: Container(
-        width: double.infinity,
         height: 200,
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Colors.blueGrey[200]!, Colors.white],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.blueAccent, width: 2),
-          boxShadow: const [
-            BoxShadow(
-              color: Colors.black12,
-              blurRadius: 8,
-              spreadRadius: 2,
-              offset: Offset(4, 4),
-            ),
-          ],
+          color: Colors.grey[300],
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.blueAccent, width: 1.5),
         ),
         child: _imageBytes == null
-            ? const Center(child: Icon(Icons.camera_alt, size: 60, color: Colors.deepPurple))
+            ? const Center(
+                child: Icon(Icons.add_a_photo_rounded, size: 50, color: Colors.blueGrey),
+              )
             : ClipRRect(
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: BorderRadius.circular(16),
                 child: Image.memory(_imageBytes!, fit: BoxFit.cover, width: double.infinity, height: 200),
               ),
       ),
@@ -215,17 +197,17 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
   Widget _buildForm() {
     return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-      elevation: 8,
-      shadowColor: Colors.blueAccent.withOpacity(0.3),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: 4,
+      shadowColor: Colors.blueGrey.withOpacity(0.2),
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            _buildTextField("Nama Produk", _nameController),
-            _buildTextField("Harga", _priceController, isNumber: true, onChanged: _formatPrice),
-            _buildTextField("Stok", _stockController, isNumber: true),
-            _buildTextField("Deskripsi", _descController, maxLines: 3),
+            _buildTextField("Nama Produk", _nameController, icon: Icons.shopping_bag),
+            _buildTextField("Harga", _priceController, isNumber: true, onChanged: _formatPrice, icon: Icons.attach_money),
+            _buildTextField("Stok", _stockController, isNumber: true, icon: Icons.inventory_2),
+            _buildTextField("Deskripsi", _descController, maxLines: 3, icon: Icons.description),
             _buildDropdown(),
             _buildSwitch(),
           ],
@@ -234,8 +216,14 @@ class _AddProductScreenState extends State<AddProductScreen> {
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController controller,
-      {bool isNumber = false, int maxLines = 1, Function(String)? onChanged}) {
+  Widget _buildTextField(
+    String label,
+    TextEditingController controller, {
+    bool isNumber = false,
+    int maxLines = 1,
+    Function(String)? onChanged,
+    IconData? icon,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: TextField(
@@ -244,13 +232,20 @@ class _AddProductScreenState extends State<AddProductScreen> {
         maxLines: maxLines,
         onChanged: onChanged,
         decoration: InputDecoration(
+          prefixIcon: icon != null ? Icon(icon, color: Colors.blueAccent) : null,
           labelText: label,
-          labelStyle: const TextStyle(color: Colors.deepPurple, fontWeight: FontWeight.bold),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+          labelStyle: const TextStyle(fontWeight: FontWeight.w600, color: Colors.blueGrey),
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          enabledBorder: OutlineInputBorder(
+            borderSide: const BorderSide(color: Colors.grey),
+            borderRadius: BorderRadius.circular(12),
+          ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(15),
             borderSide: const BorderSide(color: Colors.blueAccent, width: 2),
+            borderRadius: BorderRadius.circular(12),
           ),
         ),
       ),
@@ -263,9 +258,21 @@ class _AddProductScreenState extends State<AddProductScreen> {
       child: DropdownButtonFormField<String>(
         value: _selectedCategory,
         decoration: InputDecoration(
+          prefixIcon: const Icon(Icons.category, color: Colors.blueAccent),
           labelText: "Kategori",
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+          labelStyle: const TextStyle(fontWeight: FontWeight.w600, color: Colors.blueGrey),
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          enabledBorder: OutlineInputBorder(
+            borderSide: const BorderSide(color: Colors.grey),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderSide: const BorderSide(color: Colors.blueAccent, width: 2),
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
         items: _categories.map((String category) {
           return DropdownMenuItem<String>(
@@ -281,11 +288,18 @@ class _AddProductScreenState extends State<AddProductScreen> {
   }
 
   Widget _buildSwitch() {
-    return SwitchListTile(
-      title: const Text("Status Produk (Aktif/Tidak Aktif)"),
-      value: _isActive,
-      activeColor: Colors.blueAccent,
-      onChanged: (bool value) => setState(() => _isActive = value),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: SwitchListTile(
+        contentPadding: EdgeInsets.zero,
+        title: const Text(
+          "Status Produk (Aktif/Tidak Aktif)",
+          style: TextStyle(fontWeight: FontWeight.w600, color: Colors.blueGrey),
+        ),
+        value: _isActive,
+        activeColor: Colors.blueAccent,
+        onChanged: (bool value) => setState(() => _isActive = value),
+      ),
     );
   }
 
@@ -294,12 +308,16 @@ class _AddProductScreenState extends State<AddProductScreen> {
       onPressed: _addProduct,
       style: ElevatedButton.styleFrom(
         backgroundColor: Colors.blueAccent,
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        elevation: 8,
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        elevation: 6,
       ),
-      icon: const Icon(Icons.check_circle, color: Colors.white),
-      label: const Text("Tambah Produk", style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold)),
+      icon: const Icon(Icons.save_alt, color: Colors.white),
+      label: const Text(
+        "Tambah Produk",
+        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+      ),
     );
   }
+
 }

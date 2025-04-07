@@ -10,40 +10,48 @@ class OrdersScreen extends StatefulWidget {
 }
 
 class _OrdersScreenState extends State<OrdersScreen> {
-  String selectedStatus = '1'; // Default: Semua Pesanan
-  String selectedDeliveryType = '1'; // Default: Ambil Sendiri
+  String selectedStatus = '1';
+  String selectedDeliveryType = '1';
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Daftar Pesanan")),
+      appBar: AppBar(
+        title: const Text("Daftar Pesanan"),
+      ),
       body: Column(
         children: [
-          // Tab Filter Status
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                _buildStatusTab("Semua", "1"),
-                _buildStatusTab("Pesanan Baru", "2"),
-                _buildStatusTab("Siap Dikirim", "3"),
-                _buildStatusTab("Siap Diambil", "4"),
-                _buildStatusTab("Selesai", "5"),
-              ],
+          // Status Filter Tabs
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Wrap(
+                spacing: 8,
+                children: [
+                  _buildStatusTab("Semua", "1"),
+                  _buildStatusTab("Pesanan Baru", "2"),
+                  _buildStatusTab("Siap Dikirim", "3"),
+                  _buildStatusTab("Siap Diambil", "4"),
+                  _buildStatusTab("Selesai", "5"),
+                ],
+              ),
             ),
           ),
 
-          // Jika status 'Selesai', munculkan sub-tab "Ambil Sendiri" & "Diantar"
           if (selectedStatus == '5')
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _buildDeliveryTab("Ambil Sendiri", "1"),
-                _buildDeliveryTab("Diantar", "2"),
-              ],
+            Container(
+              margin: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _buildDeliveryTab("Ambil Sendiri", "1"),
+                  _buildDeliveryTab("Diantar", "2"),
+                ],
+              ),
             ),
 
-          // List Pesanan
+          // Orders List
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance.collection("orders").snapshots(),
@@ -61,58 +69,75 @@ class _OrdersScreenState extends State<OrdersScreen> {
                     .toList();
 
                 if (orders.isEmpty) {
-                  return const Center(child: Text("Belum ada pesanan"));
+                  return const Center(child: Text("Tidak ada pesanan untuk filter ini"));
                 }
 
                 return Column(
                   children: [
-                    // Total Harga
                     Padding(
-                      padding: const EdgeInsets.all(8.0),
+                      padding: const EdgeInsets.all(12.0),
                       child: Text(
                         "Total Harga: Rp ${_calculateTotalPrice(orders)}",
                         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                       ),
                     ),
-
                     Expanded(
-                      child: ListView(
-                        children: orders.map((order) {
+                      child: ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        itemCount: orders.length,
+                        itemBuilder: (context, index) {
+                          var order = orders[index];
                           var data = order.data() as Map<String, dynamic>;
+
                           return FutureBuilder<DocumentSnapshot>(
-                            future: FirebaseFirestore.instance.collection('users').doc(data["userId"]).get(),
+                            future: FirebaseFirestore.instance
+                                .collection('users')
+                                .doc(data["userId"])
+                                .get(),
                             builder: (context, userSnapshot) {
                               if (!userSnapshot.hasData) {
-                                return const CircularProgressIndicator();
+                                return const Padding(
+                                  padding: EdgeInsets.all(12),
+                                  child: LinearProgressIndicator(),
+                                );
                               }
 
                               var userData = userSnapshot.data!.data() as Map<String, dynamic>;
                               String customerName = userData["name"] ?? "Nama Tidak Ditemukan";
-                              print(customerName);
 
                               return Card(
-                                margin: const EdgeInsets.all(8),
-                                child: ListTile(
-                                  title: Text("Customer: $customerName"),
-                                  subtitle: Column(
+                                margin: const EdgeInsets.symmetric(vertical: 6),
+                                elevation: 3,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(12.0),
+                                  child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Text("${data["items"].length} Produk"),
+                                      ListTile(
+                                        contentPadding: EdgeInsets.zero,
+                                        title: Text(
+                                          customerName,
+                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                        ),
+                                        subtitle: Text("${data["items"].length} Produk"),
+                                        trailing: _buildActionButton(order.id, data),
+                                      ),
+                                      const Divider(),
                                       Text("Total: Rp ${data["total_harga"]}"),
                                       Text("Jenis Pengiriman: ${data["metode_pengiriman"] == "1" ? "Ambil Sendiri" : "Diantar"}"),
                                       Text("Alamat: ${data["alamat"]}"),
                                       Text("Tanggal: ${_formatDate(data["createdAt"])}"),
                                       Text("Status: ${_getStatusText(data["status"])}"),
-                                      // Menampilkan produk dan gambar
+                                      const SizedBox(height: 8),
                                       ..._buildProductItems(data["items"]),
                                     ],
                                   ),
-                                  trailing: _buildActionButton(order.id, data),
                                 ),
                               );
                             },
                           );
-                        }).toList(),
+                        },
                       ),
                     ),
                   ],
@@ -125,17 +150,17 @@ class _OrdersScreenState extends State<OrdersScreen> {
     );
   }
 
-  // Fungsi untuk filter pesanan berdasarkan status & jenis_pengiriman
+  // === Utility Functions ===
+
   bool _filterOrders(Map<String, dynamic> data) {
-    if (selectedStatus == "1") return true; // Semua Pesanan
-    if (selectedStatus == "2") return data["status"] == "1"; // Pesanan Baru
-    if (selectedStatus == "3") return data["status"] == "3" && data["metode_pengiriman"] == "2"; // Siap Dikirim (Diantar)
-    if (selectedStatus == "4") return data["status"] == "4" && data["metode_pengiriman"] == "1"; // Siap Diambil (Ambil Sendiri)
+    if (selectedStatus == "1") return true;
+    if (selectedStatus == "2") return data["status"] == "1";
+    if (selectedStatus == "3") return data["status"] == "3" && data["metode_pengiriman"] == "2";
+    if (selectedStatus == "4") return data["status"] == "4" && data["metode_pengiriman"] == "1";
     if (selectedStatus == "5") return data["status"] == "5" && data["metode_pengiriman"] == selectedDeliveryType;
     return false;
   }
 
-  // Fungsi untuk menghitung total harga pesanan
   String _calculateTotalPrice(List<QueryDocumentSnapshot> orders) {
     int total = 0;
     for (var order in orders) {
@@ -144,7 +169,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
     return total.toString();
   }
 
-  // Fungsi untuk menampilkan teks status
   String _getStatusText(String status) {
     switch (status) {
       case "2":
@@ -160,16 +184,15 @@ class _OrdersScreenState extends State<OrdersScreen> {
     }
   }
 
-  // Fungsi untuk menampilkan tombol berdasarkan status pesanan
   Widget _buildActionButton(String orderId, Map<String, dynamic> data) {
-    if (selectedStatus == "1") return const SizedBox(); // Tab "Semua" tidak ada tombol
+    if (selectedStatus == "1") return const SizedBox();
 
     String buttonText = "";
     String newStatus = "";
 
     if (selectedStatus == "2") {
       buttonText = "Terima Pesanan";
-      newStatus = data["metode_pengiriman"] == "2" ? "3" : "4"; // Jika diantar -> 3, jika ambil sendiri -> 4
+      newStatus = data["metode_pengiriman"] == "2" ? "3" : "4";
     } else if (selectedStatus == "3") {
       buttonText = "Kirim Pesanan";
       newStatus = "5";
@@ -181,69 +204,84 @@ class _OrdersScreenState extends State<OrdersScreen> {
     }
 
     return ElevatedButton(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.blue,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      ),
       onPressed: () => _updateOrderStatus(orderId, newStatus),
-      child: Text(buttonText),
+      child: Text(buttonText, style: const TextStyle(color: Colors.white)),
     );
   }
 
-  // Fungsi untuk update status pesanan
   void _updateOrderStatus(String orderId, String newStatus) async {
     await FirebaseFirestore.instance.collection("orders").doc(orderId).update({
       "status": newStatus,
     });
   }
 
-  // Widget Status Tab
   Widget _buildStatusTab(String label, String status) {
-    return TextButton(
-      onPressed: () {
+    bool isSelected = selectedStatus == status;
+    return ChoiceChip(
+      label: Text(label),
+      selected: isSelected,
+      selectedColor: Colors.blueAccent,
+      onSelected: (_) {
         setState(() {
           selectedStatus = status;
         });
       },
-      child: Text(
-        label,
-        style: TextStyle(
-          fontWeight: selectedStatus == status ? FontWeight.bold : FontWeight.normal,
-        ),
-      ),
     );
   }
 
-  // Widget Sub-tab Ambil Sendiri / Diantar
   Widget _buildDeliveryTab(String label, String type) {
-    return TextButton(
-      onPressed: () {
-        setState(() {
-          selectedDeliveryType = type;
-        });
-      },
-      child: Text(
-        label,
-        style: TextStyle(
-          fontWeight: selectedDeliveryType == type ? FontWeight.bold : FontWeight.normal,
-        ),
+    bool isSelected = selectedDeliveryType == type;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: ChoiceChip(
+        label: Text(label),
+        selected: isSelected,
+        selectedColor: Colors.teal.shade300,
+        onSelected: (_) {
+          setState(() {
+            selectedDeliveryType = type;
+          });
+        },
       ),
     );
   }
 
-  // Fungsi untuk format tanggal
   String _formatDate(Timestamp timestamp) {
     final date = DateTime.fromMillisecondsSinceEpoch(timestamp.seconds * 1000);
-    final format = DateFormat('dd/MM/yyyy HH:mm');
-    return format.format(date);
+    return DateFormat('dd MMM yyyy • HH:mm').format(date);
   }
 
-  // Fungsi untuk menampilkan produk dalam items
   List<Widget> _buildProductItems(List<dynamic> items) {
     return items.map((item) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Image.network(item['image'], width: 100, height: 100, fit: BoxFit.cover),
-          Text(item['name'] ?? 'Nama Produk Tidak Ditemukan'),
-          Text('Harga: Rp ${item['price']}'),
-        ],
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.network(
+                item['image'],
+                width: 60,
+                height: 60,
+                fit: BoxFit.cover,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(item['name'] ?? 'Produk', style: const TextStyle(fontWeight: FontWeight.w600)),
+                  Text("Harga: Rp ${item['price']}"),
+                ],
+              ),
+            ),
+          ],
+        ),
       );
     }).toList();
   }
