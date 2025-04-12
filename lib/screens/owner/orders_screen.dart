@@ -74,13 +74,13 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
                 return Column(
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.all(12.0),
-                      child: Text(
-                        "Total Harga: Rp ${_calculateTotalPrice(orders)}",
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                      ),
-                    ),
+                    // Padding(
+                    //   padding: const EdgeInsets.all(12.0),
+                    //   child: Text(
+                    //     "Total Harga: Rp ${_calculateTotalPrice(orders)}",
+                    //     style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    //   ),
+                    // ),
                     Expanded(
                       child: ListView.builder(
                         padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -124,7 +124,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                         trailing: _buildActionButton(order.id, data),
                                       ),
                                       const Divider(),
-                                      Text("Total: Rp ${data["total_harga"]}"),
+                                      Text("Total: ${_formatRupiah(data["total_harga"])}"),
                                       Text("Jenis Pengiriman: ${data["metode_pengiriman"] == "1" ? "Ambil Sendiri" : "Diantar"}"),
                                       Text("Alamat: ${data["alamat"]}"),
                                       Text("Tanggal: ${_formatDate(data["createdAt"])}"),
@@ -167,6 +167,11 @@ class _OrdersScreenState extends State<OrdersScreen> {
       total += int.parse(order["total_harga"].toString());
     }
     return total.toString();
+  }
+
+  String _formatRupiah(int amount) {
+    final format = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ');
+    return format.format(amount);
   }
 
   String _getStatusText(String status) {
@@ -275,8 +280,8 @@ class _OrdersScreenState extends State<OrdersScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(item['name'] ?? 'Produk', style: const TextStyle(fontWeight: FontWeight.w600)),
-                  Text("Harga: Rp ${item['price']}"),
+                  Text("${item['name']} x ${item['quantity']} ", style: const TextStyle(fontWeight: FontWeight.w600)),
+                  Text("Harga: ${_formatRupiah(item['price'])}"),
                 ],
               ),
             ),

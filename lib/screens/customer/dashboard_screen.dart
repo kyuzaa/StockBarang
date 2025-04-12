@@ -16,7 +16,7 @@ class _DashboardScreenState extends State<CustomerDashboardScreen> {
 
   final List<Widget> _screens = [
     const HomeScreen(),
-    FavoriteScreen(),
+    // FavoriteScreen(),
     const CartScreen(),
     const ProfileScreen(),
   ];
@@ -42,10 +42,10 @@ class _DashboardScreenState extends State<CustomerDashboardScreen> {
             icon: Icon(Icons.home),
             label: 'Beranda',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.favorite),
-            label: 'Favorit',
-          ),
+          // BottomNavigationBarItem(
+          //   icon: Icon(Icons.favorite),
+          //   label: 'Favorit',
+          // ),
           BottomNavigationBarItem(
             icon: Icon(Icons.shopping_cart),
             label: 'Keranjang',

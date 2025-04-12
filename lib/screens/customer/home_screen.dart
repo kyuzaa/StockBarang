@@ -99,7 +99,7 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         backgroundColor: Colors.blue.shade700,
         title: const Text(
-          "Waroeng Barokan",
+          "Warung Mama Yuda",
           style: TextStyle(
             fontSize: 22,
             fontWeight: FontWeight.bold,

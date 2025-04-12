@@ -60,52 +60,67 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   void _showCheckoutDialog(List<QueryDocumentSnapshot> cartItems, int totalPrice) {
+    String localSelectedDelivery = selectedDelivery;
+
     showDialog(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: const Text("Checkout"),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text("Alamat: $userAddress"),
-              const SizedBox(height: 10),
-              DropdownButton<String>(
-                value: selectedDelivery,
-                items: [
-                  DropdownMenuItem(value: "1", child: Text("Ambil Sendiri")),
-                  DropdownMenuItem(value: "2", child: Text("Diantar")),
-                ],
-                onChanged: (value) {
-                  setState(() {
-                    selectedDelivery = value!;
-                  });
-                },
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              title: const Text("Checkout"),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text("Alamat: $userAddress"),
+                    const SizedBox(height: 10),
+                    DropdownButton<String>(
+                      value: localSelectedDelivery,
+                      items: const [
+                        DropdownMenuItem(value: "1", child: Text("Ambil Sendiri")),
+                        DropdownMenuItem(value: "2", child: Text("Diantar")),
+                      ],
+                      onChanged: (value) {
+                        setStateDialog(() {
+                          localSelectedDelivery = value!;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                    ...cartItems.map((item) => ListTile(
+                          leading: Image.network(item['image'], width: 40, height: 40, fit: BoxFit.cover),
+                          title: Text(item['name']),
+                          subtitle: Text("${item['quantity']} x ${formatRupiah(item['price'])}"),
+                        )),
+                    const SizedBox(height: 10),
+                    Text("Total: ${formatRupiah(totalPrice)}",
+                        style: const TextStyle(fontWeight: FontWeight.bold)),
+                  ],
+                ),
               ),
-              const SizedBox(height: 10),
-              ...cartItems.map((item) => ListTile(
-                    leading: Image.network(item['image'], width: 40, height: 40, fit: BoxFit.cover),
-                    title: Text(item['name']),
-                    subtitle: Text("${item['quantity']} x ${formatRupiah(item['price'])}"),
-                  )),
-              const SizedBox(height: 10),
-              Text("Total: ${formatRupiah(totalPrice)}", style: const TextStyle(fontWeight: FontWeight.bold)),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Batal"),
-            ),
-            ElevatedButton(
-              onPressed: () => _processCheckout(cartItems, totalPrice),
-              child: const Text("Proses Checkout"),
-            ),
-          ],
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("Batal"),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    setState(() {
+                      selectedDelivery = localSelectedDelivery; // Update ke state utama
+                    });
+                    _processCheckout(cartItems, totalPrice);
+                  },
+                  child: const Text("Proses Checkout"),
+                ),
+              ],
+            );
+          },
         );
       },
     );
   }
+
 
   Future<void> _processCheckout(List<QueryDocumentSnapshot> cartItems, int totalPrice) async {
     if (user == null) return;
@@ -116,6 +131,7 @@ class _CartScreenState extends State<CartScreen> {
         "price": item["price"],
         "quantity": item["quantity"],
         "image": item["image"],
+        "productId": item["id"],
       };
     }).toList();
 
@@ -131,6 +147,17 @@ class _CartScreenState extends State<CartScreen> {
 
     // Hapus isi keranjang setelah checkout
     for (var item in cartItems) {
+      String productId = item["id"];
+      int quantityPurchased = item["quantity"];
+      DocumentReference productRef = FirebaseFirestore.instance.collection("products").doc(productId);
+      await FirebaseFirestore.instance.runTransaction((transaction) async {
+        DocumentSnapshot snapshot = await transaction.get(productRef);
+        if (snapshot.exists) {
+          int currentStock = snapshot["stock"];
+          int newStock = currentStock - quantityPurchased;
+          transaction.update(productRef, {"stock": newStock});
+        }
+      });
       await cartRef.doc(item.id).delete();
     }
 
