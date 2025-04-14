@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:pos/screens/customer/product_detail_screen.dart';
 import 'package:pos/widgets/product_card.dart';
 import 'package:pos/widgets/category_button.dart';
 
@@ -246,6 +247,18 @@ class _HomeScreenState extends State<HomeScreen> {
                           child: ProductCard(
                             product: productData,
                             onAddToCart: () => _handleAddToCart(context, productId),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => ProductDetailScreen(
+                                    productId: productId,
+                                    productData: productData,
+                                    onAddToCart: _handleAddToCart,
+                                  ),
+                                ),
+                              );
+                            },
                           ),
                         ),
                       );
@@ -286,6 +299,18 @@ class _HomeScreenState extends State<HomeScreen> {
                     return ProductCard(
                       product: productData,
                       onAddToCart: () => _handleAddToCart(context, productId),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ProductDetailScreen(
+                              productId: productId,
+                              productData: productData,
+                              onAddToCart: _handleAddToCart,
+                            ),
+                          ),
+                        );
+                      },
                     );
                   },
                 );

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'home_screen.dart';
-import 'favorite_screen.dart';
 import 'cart_screen.dart';
 import 'profile_screen.dart';
 
